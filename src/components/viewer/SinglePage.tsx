@@ -93,7 +93,7 @@ export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function
             className="relative mx-auto flex min-h-full items-center justify-center"
             style={{ width: Math.max(width, box.width) }}
           >
-            <div className="relative" style={{ width, height }}>
+            <div className="relative" style={{ width, height }} data-transition-target="">
               <PdfPage
                 onRendered={onPageRendered}
                 pdf={doc.pdf}

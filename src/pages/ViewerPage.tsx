@@ -12,7 +12,8 @@ import { clampZoom, nextZoom, type ZoomMode } from '../lib/pdf/geometry'
 import { describeSpread, spreadForPage } from '../lib/pdf/spreads'
 import { enterFullscreen } from '../lib/features'
 import { EmptyState } from '../components/EmptyState'
-import { TRANSITION_LABELS, useTransitionStyle } from '../lib/pageTransition'
+import { useTransitionStyle } from '../lib/pageTransition'
+import { TransitionPicker } from '../components/viewer/TransitionPicker'
 import { PenToggle } from '../components/annotations/AnnotationToolbar'
 import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
 import { useAnnotations } from '../state/AnnotationContext'
@@ -50,7 +51,7 @@ export function ViewerPage() {
   const [showThumbs, setShowThumbs] = useState(true)
   const [flipPortrait, setFlipPortrait] = useState(false)
   const navRef = useRef<NavigationHandle>(null)
-  const [transition, cycleTransition] = useTransitionStyle()
+  const [transition, setTransition] = useTransitionStyle()
   useAnnotationShortcuts(Boolean(doc))
 
   const pageCount = doc?.pageCount ?? 0
@@ -229,17 +230,7 @@ export function ViewerPage() {
             />
           )}
           {mode === 'single' && (
-            <button
-              type="button"
-              onClick={cycleTransition}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-ink/70 hover:bg-stone/50 hover:text-ink sm:px-3"
-              aria-label={`Page transition: ${TRANSITION_LABELS[transition]}. Click to change.`}
-              title="Change page transition"
-              data-testid="transition-toggle"
-            >
-              <Icon name="book" size={17} />
-              <span className="hidden lg:inline">{TRANSITION_LABELS[transition]}</span>
-            </button>
+            <TransitionPicker value={transition} onChange={setTransition} tone="light" compact />
           )}
         </div>
 

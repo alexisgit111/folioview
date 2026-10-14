@@ -7,7 +7,8 @@ import { IconButton } from '../components/ui/Button'
 import { containSize } from '../lib/pdf/geometry'
 import { isTypingTarget, useElementSize, useIdle, useReducedMotion, useSwipe } from '../lib/hooks'
 import { enterFullscreen, exitFullscreen, fullscreenSupported, isFullscreen } from '../lib/features'
-import { TRANSITION_LABELS, usePageTransition, useTransitionStyle } from '../lib/pageTransition'
+import { usePageTransition, useTransitionStyle } from '../lib/pageTransition'
+import { TransitionPicker } from '../components/viewer/TransitionPicker'
 import { AnnotationLayer } from '../components/annotations/AnnotationLayer'
 import { AnnotationToolbar, PenToggle } from '../components/annotations/AnnotationToolbar'
 import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
@@ -26,7 +27,7 @@ export function PresentPage() {
   const [idle, poke] = useIdle(IDLE_MS)
   const canFullscreen = fullscreenSupported()
   const wasFullscreen = useRef(isFullscreen())
-  const [transition, cycleTransition] = useTransitionStyle()
+  const [transition, setTransition] = useTransitionStyle()
   const slideWrapRef = useRef<HTMLDivElement>(null)
   const onSlideRendered = usePageTransition(slideWrapRef, page, transition, reducedMotion)
   const { active: drawing } = useAnnotations()
@@ -171,6 +172,7 @@ export function PresentPage() {
       >
         {fit.width > 0 && (
           <div ref={slideWrapRef} className="relative" style={{ width: fit.width, height: fit.height }}>
+            <div className="absolute inset-0" data-transition-target="">
             <PdfPage
               pdf={doc.pdf}
               pageIndex={page}
@@ -181,6 +183,7 @@ export function PresentPage() {
               onRendered={onSlideRendered}
             />
             <AnnotationLayer pageIndex={page} width={fit.width} height={fit.height} />
+            </div>
           </div>
         )}
         {/* Warm the next page so advancing feels instant. */}
@@ -209,17 +212,7 @@ export function PresentPage() {
           <p className="max-w-[60%] truncate pt-2 text-sm text-canvas/80">{doc.title}</p>
           <div className="flex items-center gap-1">
             <PenToggle tone="dark" />
-            <button
-              type="button"
-              onClick={cycleTransition}
-              className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-canvas/85 hover:bg-white/10 hover:text-canvas"
-              aria-label={`Page transition: ${TRANSITION_LABELS[transition]}. Click to change.`}
-              title="Change page transition"
-              data-testid="transition-toggle"
-            >
-              <Icon name="book" size={16} />
-              {TRANSITION_LABELS[transition]}
-            </button>
+            <TransitionPicker value={transition} onChange={setTransition} tone="dark" />
             {canFullscreen && (
               <IconButton
                 variant="dark"

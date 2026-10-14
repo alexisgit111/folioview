@@ -149,7 +149,7 @@ test('drop transition: the old page falls away', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(() => localStorage.setItem('fv.transition', 'drop'))
   await openSingle(page)
-  await expect(page.getByTestId('transition-toggle')).toHaveAttribute('aria-label', /Drop/)
+  await expect(page.getByTestId('transition-toggle')).toHaveValue('drop')
   await page.keyboard.press('ArrowRight')
   const overlay = page.locator('.page-transition-overlay')
   await expect(overlay).toHaveCount(1)
