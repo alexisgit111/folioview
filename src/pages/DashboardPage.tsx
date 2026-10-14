@@ -17,37 +17,39 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-5 sm:px-8">
-        <Wordmark />
-        <p className="inline-flex items-center gap-2 rounded-full border border-sage/60 bg-sage/15 px-3 py-1.5 text-xs font-medium text-ink/80" data-testid="local-status">
-          <Icon name="shield" size={15} className="text-[#5F6B58]" />
-          <span>Local-only<span className="hidden sm:inline"> · files never leave this device</span></span>
-        </p>
-      </header>
+      <div className="bg-ink text-canvas">
+        <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-8">
+          <Wordmark />
+          <p className="inline-flex items-center gap-2 rounded border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-canvas/85" data-testid="local-status">
+            <Icon name="shield" size={15} className="text-accent" />
+            <span>Local-only<span className="hidden sm:inline"> · files never leave this device</span></span>
+          </p>
+        </header>
 
-      <main className="mx-auto max-w-6xl px-5 pb-20 sm:px-8">
-        <section className="grid gap-10 pb-14 pt-8 md:grid-cols-[1.05fr_1fr] md:items-center md:gap-14 md:pt-14">
+        <section className="mx-auto grid max-w-6xl gap-10 px-5 pb-14 pt-10 sm:px-8 md:grid-cols-[1.05fr_1fr] md:items-center md:gap-14 md:pb-20 md:pt-16">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8C7347]">Brochures · Portfolios · Presentations</p>
-            <h1 className="mt-4 font-display text-[clamp(2.4rem,5.5vw,4.1rem)] font-[380] leading-[1.02] tracking-[-0.02em]">
-              Turn any PDF into a<br className="hidden sm:block" /> <em className="font-[340] text-[#7A6440]">page-turning</em> folio.
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Brochures · Portfolios · Presentations</p>
+            <h1 className="mt-4 font-display text-[clamp(2.3rem,4.6vw,3.5rem)] leading-[1.05] tracking-[-0.015em]">
+              Turn any PDF into a<br className="hidden sm:block" /> <span className="text-accent">page-turning</span> folio.
             </h1>
-            <p className="mt-5 max-w-md text-[16px] leading-relaxed text-ink/65">
+            <p className="mt-5 max-w-md text-[17px] leading-relaxed text-canvas/75">
               Flip through brochures like print, read page by page with zoom, or present fullscreen in a meeting — straight from your browser.
             </p>
           </div>
 
           <DropZone onPick={openPicker} disabled={busy} />
         </section>
+      </div>
 
+      <main className="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8">
         {doc && (
-          <section className="mb-12 flex flex-col gap-4 rounded-2xl border border-stone bg-white/70 p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Currently open">
+          <section className="mb-12 flex flex-col gap-4 rounded-md border border-stone border-l-4 border-l-accent bg-mist p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Currently open">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Open in this tab</p>
               <p className="mt-1 truncate font-display text-xl">{doc.title}</p>
               <p className="text-sm text-ink/55">{doc.pageCount} pages · not saved — closing the tab clears it</p>
             </div>
-            <Link to="/viewer" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-canvas hover:bg-ink/90">
+            <Link to="/viewer" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded bg-ink px-5 text-sm font-semibold text-canvas hover:bg-accent hover:text-ink">
               Continue viewing <Icon name="arrow-right" size={18} />
             </Link>
           </section>
@@ -83,21 +85,22 @@ function Wordmark() {
   return (
     <Link to="/" className="inline-flex items-center gap-2.5" aria-label="FolioView home">
       <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-        <rect x="3" y="5" width="10.5" height="18" rx="1.5" fill="#151A22" />
-        <path d="M14.5 5h9a1.5 1.5 0 011.5 1.5v15a1.5 1.5 0 01-1.5 1.5h-9z" fill="#C7A878" />
+        <rect x="3" y="5" width="10.5" height="18" rx="1.5" fill="#FFFFFF" />
+        <path d="M14.5 5h9a1.5 1.5 0 011.5 1.5v15a1.5 1.5 0 01-1.5 1.5h-9z" fill="#00A1E9" />
       </svg>
-      <span className="font-display text-[22px] tracking-[-0.01em]">FolioView</span>
+      <span className="font-display text-[22px] tracking-[-0.01em]">Folio<span className="text-accent">View</span></span>
     </Link>
   )
 }
 
 function DropZone({ onPick, disabled }: { onPick: () => void; disabled: boolean }) {
   return (
-    <div className="relative rounded-[28px] border border-dashed border-ink/25 bg-white/60 p-8 text-center shadow-[0_1px_0_rgba(21,26,34,0.04)] sm:p-12">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ink text-canvas">
+    <div className="relative rounded-lg bg-canvas p-8 text-center text-ink shadow-dialog ring-1 ring-white/10 sm:p-12">
+      <div className="pointer-events-none absolute inset-3 rounded-md border-2 border-dashed border-stone" aria-hidden="true" />
+      <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-md bg-accent text-ink">
         <Icon name="upload" size={24} />
       </div>
-      <p className="mt-5 font-display text-2xl">Drop a PDF anywhere</p>
+      <p className="relative mt-5 font-display text-2xl">Drop a PDF anywhere</p>
       <p className="mt-1.5 text-sm text-ink/60">or choose one from your device</p>
       <Button variant="primary" size="lg" className="mt-6" onClick={onPick} disabled={disabled} data-testid="choose-pdf">
         Choose PDF
@@ -113,19 +116,19 @@ function DemoCard({ demo, onOpen, disabled }: { demo: DemoDocument; onOpen: () =
       type="button"
       onClick={onOpen}
       disabled={disabled}
-      className="group block w-full rounded-2xl text-left disabled:opacity-60"
+      className="group block w-full rounded-md text-left disabled:opacity-60"
       aria-label={`Open demo: ${demo.title}`}
       data-testid={`demo-${demo.id}`}
     >
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl bg-[#ECEBE5] ring-1 ring-stone transition group-hover:ring-ink/25">
+      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-md bg-mist ring-1 ring-stone transition group-hover:ring-2 group-hover:ring-accent">
         <DemoThumb url={demo.url} />
       </div>
       <div className="mt-3 flex items-start justify-between gap-3">
         <div>
-          <p className="font-medium">{demo.title}</p>
+          <p className="font-semibold decoration-accent decoration-2 underline-offset-4 group-hover:underline">{demo.title}</p>
           <p className="text-sm text-ink/55">{demo.subtitle}</p>
         </div>
-        <span className="mt-0.5 shrink-0 rounded-full bg-stone/60 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink/70">
+        <span className="mt-0.5 shrink-0 rounded-sm bg-ink px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-canvas">
           {demo.kind}
         </span>
       </div>
@@ -179,7 +182,7 @@ function DemoThumb({ url }: { url: string }) {
 function Note({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="font-medium text-ink">{title}</p>
+      <p className="border-l-2 border-accent pl-2.5 font-bold text-ink">{title}</p>
       <p className="mt-1 leading-relaxed">{children}</p>
     </div>
   )

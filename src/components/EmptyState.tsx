@@ -17,7 +17,7 @@ export function EmptyState({
   return (
     <main className="grid min-h-dvh place-items-center bg-canvas px-6 py-16 text-ink">
       <div className="max-w-md text-center">
-        <div className={`mx-auto mb-6 grid h-14 w-14 place-items-center rounded-2xl ${tone === 'warning' ? 'bg-gold/25 text-ink' : 'bg-stone/60 text-ink/70'}`}>
+        <div className={`mx-auto mb-6 grid h-14 w-14 place-items-center rounded-2xl ${tone === 'warning' ? 'bg-accent/15 text-ink' : 'bg-stone/60 text-ink/70'}`}>
           <Icon name={icon} size={26} />
         </div>
         <h1 className="font-display text-3xl leading-tight">{title}</h1>

@@ -137,23 +137,23 @@ export function ViewerPage() {
   return (
     <div className="flex h-dvh flex-col bg-canvas text-ink">
       {/* Top bar */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-stone/80 px-2 sm:gap-3 sm:px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 bg-ink px-2 text-canvas sm:gap-3 sm:px-4">
         <Link
           to="/"
           aria-label="Back to dashboard"
           title="Back to dashboard"
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink/80 hover:bg-stone/50"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-canvas/85 hover:bg-white/10 hover:text-canvas"
         >
           <Icon name="back" />
         </Link>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-lg leading-tight sm:text-xl" title={doc.title}>{doc.title}</h1>
-          <p className="truncate text-xs text-ink/55">
+          <p className="truncate text-xs text-canvas/65">
             {pageCount} {pageCount === 1 ? 'page' : 'pages'} · {doc.origin === 'demo' ? 'Bundled demo' : 'Local file, not uploaded'}
           </p>
         </div>
 
-        <div role="radiogroup" aria-label="View mode" className="flex shrink-0 rounded-full border border-stone bg-white/60 p-1">
+        <div role="radiogroup" aria-label="View mode" className="flex shrink-0 rounded border border-white/20 bg-white/5 p-1">
           {([
             ['flipbook', 'Flipbook', 'book'],
             ['single', 'Single page', 'page'],
@@ -166,7 +166,7 @@ export function ViewerPage() {
               aria-label={label}
               title={label}
               onClick={() => setMode(m)}
-              className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors ${mode === m ? 'bg-ink text-canvas' : 'text-ink/70 hover:text-ink'}`}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-sm px-3 text-[13px] font-semibold transition-colors ${mode === m ? 'bg-accent text-ink' : 'text-canvas/75 hover:text-canvas'}`}
             >
               <Icon name={icon} size={17} />
               <span className="hidden lg:inline">{label}</span>
@@ -174,15 +174,15 @@ export function ViewerPage() {
           ))}
         </div>
 
-        <PenToggle />
-        <Button variant="primary" icon="present" onClick={present} className="shrink-0 max-sm:w-11 max-sm:px-0" aria-label="Present fullscreen">
+        <PenToggle tone="dark" />
+        <Button variant="accent" icon="present" onClick={present} className="shrink-0 max-sm:w-11 max-sm:px-0" aria-label="Present fullscreen">
           <span className="hidden sm:inline">Present</span>
         </Button>
-        <IconButton icon="upload" label="Open another PDF" onClick={openPicker} className="max-sm:hidden" />
+        <IconButton icon="upload" label="Open another PDF" variant="dark" onClick={openPicker} className="max-sm:hidden" />
       </header>
 
       {/* Stage */}
-      <main className={`relative min-h-0 flex-1 ${mode === 'flipbook' ? 'flip-stage-bg' : 'bg-[#EEEDE8]'}`} aria-label="Document viewer">
+      <main className={`relative min-h-0 flex-1 ${mode === 'flipbook' ? 'flip-stage-bg' : 'bg-mist'}`} aria-label="Document viewer">
         {mode === 'flipbook' ? (
           <div className="absolute inset-0 px-3 py-6 sm:px-16 sm:py-10">
             <Flipbook

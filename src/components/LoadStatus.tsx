@@ -48,7 +48,7 @@ export function LoadStatus({ onChooseAnother }: { onChooseAnother?: () => void }
                 aria-valuenow={load.progress === null ? undefined : Math.round(load.progress * 100)}
               >
                 <div
-                  className={`h-full rounded-full bg-gold ${load.progress === null ? 'progress-indeterminate w-1/3' : 'transition-[width]'}`}
+                  className={`h-full rounded-full bg-accent ${load.progress === null ? 'progress-indeterminate w-1/3' : 'transition-[width]'}`}
                   style={load.progress === null ? undefined : { width: `${Math.max(4, load.progress * 100)}%` }}
                 />
               </div>

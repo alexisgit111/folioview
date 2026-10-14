@@ -153,7 +153,7 @@ function ThumbnailRail({
                 onClick={() => onSelect(i)}
                 aria-label={`Go to page ${i + 1}`}
                 aria-current={active ? 'page' : undefined}
-                className={`thumb group block w-full rounded-sm p-1 text-center transition-colors ${active ? 'bg-gold/25' : 'hover:bg-stone/50'}`}
+                className={`thumb group block w-full rounded-sm p-1 text-center transition-colors ${active ? 'bg-accent/25' : 'hover:bg-stone/50'}`}
               >
                 <PdfPage
                   pdf={doc.pdf}
@@ -163,7 +163,7 @@ function ThumbnailRail({
                   label=""
                   lazy
                   scrollRoot={rail}
-                  className={`mx-auto ring-1 ${active ? 'ring-gold' : 'ring-stone'}`}
+                  className={`mx-auto ring-1 ${active ? 'ring-accent' : 'ring-stone'}`}
                 />
                 <span className={`mt-1.5 block text-[11px] tabular-nums ${active ? 'font-semibold text-ink' : 'text-ink/60'}`}>
                   {i + 1}

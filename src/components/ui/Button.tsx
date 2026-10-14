@@ -1,12 +1,13 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'dark'
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'dark'
 type Size = 'sm' | 'md' | 'lg'
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-ink text-canvas hover:bg-ink/90 active:bg-ink',
-  secondary: 'border border-stone bg-white/70 text-ink hover:border-ink/30 hover:bg-white',
+  primary: 'bg-ink text-canvas hover:bg-accent hover:text-ink active:bg-accent',
+  accent: 'bg-accent text-ink hover:bg-canvas hover:text-ink active:bg-canvas',
+  secondary: 'border border-stone bg-white text-ink hover:border-accent hover:text-ink',
   ghost: 'text-ink/80 hover:bg-stone/50 hover:text-ink',
   dark: 'text-canvas/85 hover:bg-white/10 hover:text-canvas',
 }
@@ -33,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       type={type}
-      className={`inline-flex select-none items-center justify-center whitespace-nowrap rounded-full font-medium tracking-[-0.005em] transition-colors disabled:pointer-events-none disabled:opacity-40 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex select-none items-center justify-center whitespace-nowrap rounded font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40 ${variants[variant]} ${sizes[size]} ${className}`}
       {...rest}
     >
       {icon && <Icon name={icon} size={size === 'sm' ? 16 : 18} />}

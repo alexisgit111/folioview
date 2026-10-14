@@ -30,9 +30,9 @@ type HistoryEntry =
 
 export const PEN_COLORS = [
   { name: 'Red', value: '#D23B2E' },
-  { name: 'Gold', value: '#C7A878' },
+  { name: 'Cyan', value: '#00A1E9' },
   { name: 'Blue', value: '#2F6FD6' },
-  { name: 'Ink', value: '#151A22' },
+  { name: 'Navy', value: '#001D4A' },
   { name: 'White', value: '#FFFFFF' },
 ] as const
 

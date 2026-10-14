@@ -76,7 +76,7 @@ export function FilePickerProvider({ children }: { children: ReactNode }) {
       />
       {dragging && (
         <div className="pointer-events-none fixed inset-0 z-[60] grid place-items-center bg-ink/55 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-gold/80 bg-ink/70 px-14 py-12 text-canvas">
+          <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-accent/80 bg-ink/70 px-14 py-12 text-canvas">
             <Icon name="upload" size={32} />
             <p className="font-display text-2xl">Drop PDF to open</p>
             <p className="text-sm text-canvas/70">It stays on this device</p>

@@ -120,7 +120,7 @@ export function PresentPage() {
 
   if (!doc) {
     return (
-      <div className="grid h-dvh place-items-center bg-[#0E1116] px-6 text-center text-canvas">
+      <div className="grid h-dvh place-items-center bg-navy-deep px-6 text-center text-canvas">
         <div>
           <p className="font-display text-3xl">Nothing to present</p>
           <p className="mt-2 text-sm text-canvas/60">Open a PDF first, then choose Present.</p>
@@ -142,7 +142,7 @@ export function PresentPage() {
 
   return (
     <div
-      className={`present-root fixed inset-0 select-none bg-[#0E1116] ${hidden ? 'cursor-none' : ''}`}
+      className={`present-root fixed inset-0 select-none bg-navy-deep ${hidden ? 'cursor-none' : ''}`}
       data-controls={hidden ? 'hidden' : 'visible'}
       data-fullscreen={fullscreen}
       aria-label="Presentation"

@@ -19,7 +19,7 @@ export function AnnotationToolbar({ page, tone = 'light' }: Props) {
     useAnnotations()
   if (!active) return null
   const dark = tone === 'dark'
-  const base = dark ? 'bg-[#1B2029]/95 text-canvas ring-white/10' : 'bg-canvas/95 text-ink ring-stone'
+  const base = dark ? 'bg-[#0a2a5c]/95 text-canvas ring-white/10' : 'bg-canvas/95 text-ink ring-stone'
   const btn = (on: boolean) =>
     `inline-flex h-10 min-w-10 items-center justify-center rounded-full px-2 transition-colors ${
       on ? (dark ? 'bg-white/15 text-canvas' : 'bg-ink text-canvas') : dark ? 'text-canvas/80 hover:bg-white/10' : 'text-ink/75 hover:bg-stone/60'
@@ -54,7 +54,7 @@ export function AnnotationToolbar({ page, tone = 'light' }: Props) {
           className={`grid h-10 w-8 place-items-center rounded-full disabled:opacity-30`}
         >
           <span
-            className={`block h-5 w-5 rounded-full ring-1 ${dark ? 'ring-white/40' : 'ring-ink/20'} ${color === c.value && tool !== 'eraser' ? 'outline-2 outline-offset-2 outline-gold [outline-style:solid]' : ''}`}
+            className={`block h-5 w-5 rounded-full ring-1 ${dark ? 'ring-white/40' : 'ring-ink/20'} ${color === c.value && tool !== 'eraser' ? 'outline-2 outline-offset-2 outline-accent [outline-style:solid]' : ''}`}
             style={{ background: c.value }}
           />
         </button>
@@ -110,9 +110,9 @@ export function PenToggle({ tone = 'light', className = '' }: { tone?: 'light' |
       aria-label={active ? 'Stop drawing' : 'Draw on page'}
       title="Draw (P)"
       data-testid="pen-toggle"
-      className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors ${
+      className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded px-3 text-[13px] font-semibold transition-colors ${
         active
-          ? 'bg-gold text-ink'
+          ? 'bg-accent text-ink'
           : dark
             ? 'text-canvas/85 hover:bg-white/10 hover:text-canvas'
             : 'text-ink/75 hover:bg-stone/50 hover:text-ink'
