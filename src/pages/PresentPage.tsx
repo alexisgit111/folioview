@@ -8,6 +8,10 @@ import { containSize } from '../lib/pdf/geometry'
 import { isTypingTarget, useElementSize, useIdle, useReducedMotion, useSwipe } from '../lib/hooks'
 import { enterFullscreen, exitFullscreen, fullscreenSupported, isFullscreen } from '../lib/features'
 import { TRANSITION_LABELS, usePageTransition, useTransitionStyle } from '../lib/pageTransition'
+import { AnnotationLayer } from '../components/annotations/AnnotationLayer'
+import { AnnotationToolbar, PenToggle } from '../components/annotations/AnnotationToolbar'
+import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
+import { useAnnotations } from '../state/AnnotationContext'
 
 const IDLE_MS = 2500
 const STAGE_MARGIN = 24
@@ -25,6 +29,8 @@ export function PresentPage() {
   const [transition, cycleTransition] = useTransitionStyle()
   const slideWrapRef = useRef<HTMLDivElement>(null)
   const onSlideRendered = usePageTransition(slideWrapRef, page, transition, reducedMotion)
+  const { active: drawing } = useAnnotations()
+  useAnnotationShortcuts(Boolean(doc))
 
   const exit = useCallback(() => {
     void exitFullscreen()
@@ -109,7 +115,7 @@ export function PresentPage() {
     }
   }
 
-  const swipe = useSwipe((dir) => (dir === 'next' ? next() : prev()))
+  const swipe = useSwipe((dir) => (dir === 'next' ? next() : prev()), { enabled: !drawing })
   const downAt = useRef<{ x: number; y: number } | null>(null)
 
   if (!doc) {
@@ -131,7 +137,7 @@ export function PresentPage() {
     width: Math.max(0, stage.width - STAGE_MARGIN * 2),
     height: Math.max(0, stage.height - STAGE_MARGIN * 2),
   })
-  const hidden = idle && !controlsFocused
+  const hidden = idle && !controlsFocused && !drawing
   const fade = reducedMotion ? '' : 'transition-opacity duration-500'
 
   return (
@@ -155,7 +161,7 @@ export function PresentPage() {
           const d = downAt.current
           downAt.current = null
           // A tap (not a swipe): left third goes back, elsewhere advances.
-          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.button === 0) {
+          if (!drawing && d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.button === 0) {
             if (e.clientX < window.innerWidth / 3) prev()
             else next()
           }
@@ -164,7 +170,7 @@ export function PresentPage() {
         data-testid="present-stage"
       >
         {fit.width > 0 && (
-          <div ref={slideWrapRef} className="relative">
+          <div ref={slideWrapRef} className="relative" style={{ width: fit.width, height: fit.height }}>
             <PdfPage
               pdf={doc.pdf}
               pageIndex={page}
@@ -174,6 +180,7 @@ export function PresentPage() {
               className="shadow-[0_20px_80px_rgba(0,0,0,0.5)]"
               onRendered={onSlideRendered}
             />
+            <AnnotationLayer pageIndex={page} width={fit.width} height={fit.height} />
           </div>
         )}
         {/* Warm the next page so advancing feels instant. */}
@@ -201,6 +208,7 @@ export function PresentPage() {
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/50 to-transparent p-4">
           <p className="max-w-[60%] truncate pt-2 text-sm text-canvas/80">{doc.title}</p>
           <div className="flex items-center gap-1">
+            <PenToggle tone="dark" />
             <button
               type="button"
               onClick={cycleTransition}
@@ -223,7 +231,8 @@ export function PresentPage() {
             <IconButton variant="dark" icon="close" label="End presentation" onClick={exit} />
           </div>
         </div>
-        <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/50 to-transparent p-5">
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 bg-gradient-to-t from-black/50 to-transparent p-5">
+          <AnnotationToolbar page={page} tone="dark" />
           <div className="flex items-center gap-2 rounded-full bg-black/40 px-2 py-1 text-canvas backdrop-blur">
             <IconButton variant="dark" icon="arrow-left" label="Previous slide" onClick={prev} disabled={page === 0} />
             <span className="min-w-16 text-center text-sm tabular-nums" data-testid="present-indicator">

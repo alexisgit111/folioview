@@ -8,6 +8,7 @@ import { renderPageToObjectUrl } from '../../lib/pdf/renderImage'
 import { renderWindow, spreadForPage } from '../../lib/pdf/spreads'
 import { PdfPage } from './PdfPage'
 import type { NavigationHandle } from './types'
+import { PAGE_UNITS, drawStrokes, useAnnotations } from '../../state/AnnotationContext'
 
 interface FlipbookProps {
   doc: OpenDocument
@@ -50,6 +51,10 @@ export const Flipbook = forwardRef<NavigationHandle, FlipbookProps>(function Fli
   const busyRef = useRef(false)
   const queuedRef = useRef<(() => void) | null>(null)
   const [renderTick, setRenderTick] = useState(0)
+  const { strokesFor, version: annotVersion } = useAnnotations()
+  const strokesRef = useRef(strokesFor)
+  strokesRef.current = strokesFor
+  const annotSeen = useRef(annotVersion)
 
   const { width: pw, height: ph } = doc.firstPageSize
   const aspect = pw / ph
@@ -184,7 +189,10 @@ export const Flipbook = forwardRef<NavigationHandle, FlipbookProps>(function Fli
     const entries = pagesRef.current
     if (!entries.length || renderWidth < 40) return
     const keep = renderWindow(page, doc.pageCount, config.flipbookRenderWindow)
+    const annotChanged = annotSeen.current !== annotVersion
+    annotSeen.current = annotVersion
     entries.forEach((entry, i) => {
+      if (annotChanged && entry.url) entry.renderedWidth = 0 // re-render with current drawings
       if (!keep.has(i)) {
         entry.controller?.abort()
         entry.controller = null
@@ -203,7 +211,15 @@ export const Flipbook = forwardRef<NavigationHandle, FlipbookProps>(function Fli
       entry.controller = controller
       doc.pdf
         .getPage(i + 1)
-        .then((p) => renderPageToObjectUrl(p, renderWidth, controller.signal))
+        .then((p) =>
+          renderPageToObjectUrl(p, renderWidth, controller.signal, {
+            paint: (ctx, canvas) => {
+              const strokes = strokesRef.current(i)
+              if (strokes.length) drawStrokes(ctx, strokes, canvas.width / PAGE_UNITS)
+              entry.el.dataset.annotated = strokes.length ? 'true' : 'false'
+            },
+          }),
+        )
         .then((url) => {
           if (entry.controller === controller) entry.controller = null
           if (!url) return
@@ -223,7 +239,7 @@ export const Flipbook = forwardRef<NavigationHandle, FlipbookProps>(function Fli
           if (!controller.signal.aborted) console.error(`FolioView: failed to render page ${i + 1}`, err)
         })
     })
-  }, [page, renderWidth, doc, renderTick])
+  }, [page, renderWidth, doc, renderTick, annotVersion])
 
   useImperativeHandle(ref, () => {
     const turn = (dir: 'next' | 'prev') => {

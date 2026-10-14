@@ -4,6 +4,9 @@ import { useElementSize, useSwipe } from '../../lib/hooks'
 import { fitScale, type ZoomMode } from '../../lib/pdf/geometry'
 import { PdfPage } from './PdfPage'
 import { usePageTransition, type TransitionStyle } from '../../lib/pageTransition'
+import { AnnotationLayer } from '../annotations/AnnotationLayer'
+import { AnnotationToolbar } from '../annotations/AnnotationToolbar'
+import { useAnnotations } from '../../state/AnnotationContext'
 import type { NavigationHandle } from './types'
 
 /** PDF.js convention: "100%" shows 72pt as 96 CSS px. */
@@ -33,6 +36,7 @@ export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function
   const [stageRef, stage] = useElementSize<HTMLDivElement>()
   const pageWrapRef = useRef<HTMLDivElement>(null)
   const onPageRendered = usePageTransition(pageWrapRef, page, transition, reducedMotion)
+  const { active: drawing } = useAnnotations()
   const size = getPageSize(page)
   // useElementSize reports the content box, i.e. already inside the padding.
   const box = { width: Math.max(0, stage.width), height: Math.max(0, stage.height) }
@@ -55,19 +59,33 @@ export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function
     prev: () => onPageChange(Math.max(0, page - 1)),
   }), [doc.pageCount, page, onPageChange])
 
-  const swipe = useSwipe((dir) => onPageChange(dir === 'next' ? page + 1 : page - 1), { enabled: !overflowsX })
+  const swipe = useSwipe((dir) => onPageChange(dir === 'next' ? page + 1 : page - 1), { enabled: !overflowsX && !drawing })
 
   return (
     <div className="flex h-full min-h-0 w-full">
       {showThumbnails && (
         <ThumbnailRail doc={doc} page={page} onSelect={onPageChange} getPageSize={getPageSize} />
       )}
+      <div className="relative flex min-w-0 flex-1">
+      {drawing && (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+          <div className="pointer-events-auto">
+            <AnnotationToolbar page={page} />
+          </div>
+        </div>
+      )}
       <div
         ref={stageRef}
         className="single-stage relative min-w-0 flex-1 overflow-auto overscroll-contain"
-        style={{ padding: STAGE_PADDING, touchAction: overflowsX ? 'auto' : 'pan-y pinch-zoom' }}
+        style={{
+          padding: STAGE_PADDING,
+          // leave room for the floating drawing toolbar
+          paddingTop: drawing ? STAGE_PADDING + 64 : STAGE_PADDING,
+          touchAction: overflowsX ? 'auto' : 'pan-y pinch-zoom',
+        }}
         {...swipe}
         data-testid="single-stage"
+        data-drawing={drawing}
       >
         {stage.width > 0 && (
           <div
@@ -75,17 +93,21 @@ export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function
             className="relative mx-auto flex min-h-full items-center justify-center"
             style={{ width: Math.max(width, box.width) }}
           >
-            <PdfPage
-              onRendered={onPageRendered}
-              pdf={doc.pdf}
-              pageIndex={page}
-              width={width}
-              height={height}
-              label={`Page ${page + 1} of ${doc.pageCount}`}
-              className="shadow-page"
-            />
+            <div className="relative" style={{ width, height }}>
+              <PdfPage
+                onRendered={onPageRendered}
+                pdf={doc.pdf}
+                pageIndex={page}
+                width={width}
+                height={height}
+                label={`Page ${page + 1} of ${doc.pageCount}`}
+                className="shadow-page"
+              />
+              <AnnotationLayer pageIndex={page} width={width} height={height} />
+            </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

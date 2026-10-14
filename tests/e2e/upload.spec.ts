@@ -121,7 +121,7 @@ test.describe('uploading and validating PDFs', () => {
     await expect(pageEl).toHaveAttribute('data-status', 'rendered')
     const box = await pageEl.boundingBox()
     expect(box!.width / box!.height).toBeCloseTo(842 / 595, 1)
-    expect(await canvasHasInk(page, '.single-stage canvas')).toBe(true)
+    expect(await canvasHasInk(page, '.single-stage canvas[data-pdf-canvas]')).toBe(true)
   })
 })
 
@@ -197,7 +197,7 @@ test.describe('large documents', () => {
     await expect(page.locator('.single-stage .pdf-page')).toHaveAttribute('data-rendered-page', '0')
     for (let i = 0; i < 15; i++) await page.keyboard.press('ArrowRight')
     await expect(page.locator('.single-stage .pdf-page')).toHaveAttribute('data-rendered-page', '15')
-    await expect(page.locator('.single-stage canvas')).toHaveCount(1)
+    await expect(page.locator('.single-stage canvas[data-pdf-canvas]')).toHaveCount(1)
     expect(await announcer(page)).toBe('Page 16 of 120')
     expect(errors).toEqual([])
   })

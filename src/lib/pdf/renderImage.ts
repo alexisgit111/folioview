@@ -14,7 +14,7 @@ export async function renderPageToObjectUrl<V extends { width: number; height: n
   page: RenderablePage<V>,
   cssWidth: number,
   signal: AbortSignal,
-  options: { dpr?: number; maxPixels?: number } = {},
+  options: { dpr?: number; maxPixels?: number; paint?: (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void } = {},
 ): Promise<string | null> {
   const base = page.getViewport({ scale: 1 })
   const cssScale = cssWidth / base.width
@@ -43,6 +43,10 @@ export async function renderPageToObjectUrl<V extends { width: number; height: n
   if (signal.aborted) {
     releaseCanvas(canvas)
     return null
+  }
+  if (options.paint) {
+    const ctx = canvas.getContext('2d')
+    if (ctx) options.paint(ctx, canvas)
   }
   const blob = await canvasToBlob(canvas)
   releaseCanvas(canvas)

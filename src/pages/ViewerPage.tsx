@@ -13,9 +13,13 @@ import { describeSpread, spreadForPage } from '../lib/pdf/spreads'
 import { enterFullscreen } from '../lib/features'
 import { EmptyState } from '../components/EmptyState'
 import { TRANSITION_LABELS, useTransitionStyle } from '../lib/pageTransition'
+import { PenToggle } from '../components/annotations/AnnotationToolbar'
+import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
+import { useAnnotations } from '../state/AnnotationContext'
 
 export function ViewerPage() {
   const { doc, page, setPage, getPageSize } = useDocument()
+  const { active: drawing } = useAnnotations()
   const openPicker = useFilePicker()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -28,6 +32,11 @@ export function ViewerPage() {
     p.set('mode', m)
     return p
   }, { replace: true }), [setParams])
+
+  // Drawing happens on the single-page view; switch to it when the pen is picked up.
+  useEffect(() => {
+    if (drawing && mode === 'flipbook') setMode('single')
+  }, [drawing, mode, setMode])
 
   // Pin the screen-size default into the URL once, so rotating a tablet or
   // resizing the window never switches modes under the reader.
@@ -42,6 +51,7 @@ export function ViewerPage() {
   const [flipPortrait, setFlipPortrait] = useState(false)
   const navRef = useRef<NavigationHandle>(null)
   const [transition, cycleTransition] = useTransitionStyle()
+  useAnnotationShortcuts(Boolean(doc))
 
   const pageCount = doc?.pageCount ?? 0
   const spread = mode === 'flipbook' && !flipPortrait && !narrow ? spreadForPage(page, pageCount) : [page]
@@ -164,6 +174,7 @@ export function ViewerPage() {
           ))}
         </div>
 
+        <PenToggle />
         <Button variant="primary" icon="present" onClick={present} className="shrink-0 max-sm:w-11 max-sm:px-0" aria-label="Present fullscreen">
           <span className="hidden sm:inline">Present</span>
         </Button>

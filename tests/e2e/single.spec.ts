@@ -14,8 +14,8 @@ test.describe('single-page mode', () => {
   })
 
   test('renders the page sharply for the device pixel ratio', async ({ page }) => {
-    expect(await canvasHasInk(page, '.single-stage canvas')).toBe(true)
-    const { cssW, pxW, dpr } = await page.locator('.single-stage canvas').evaluate((c: HTMLCanvasElement) => ({
+    expect(await canvasHasInk(page, '.single-stage canvas[data-pdf-canvas]')).toBe(true)
+    const { cssW, pxW, dpr } = await page.locator('.single-stage canvas[data-pdf-canvas]').evaluate((c: HTMLCanvasElement) => ({
       cssW: c.getBoundingClientRect().width,
       pxW: c.width,
       dpr: window.devicePixelRatio,

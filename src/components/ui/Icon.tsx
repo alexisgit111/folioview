@@ -20,6 +20,11 @@ const paths = {
   thumbs: 'M4 4h6v7H4zM14 4h6v7h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   shield: 'M12 3.5l7 2.5v6c0 4.2-3 7.4-7 8.5-4-1.1-7-4.3-7-8.5V6z',
   file: 'M7 3.5h7l4 4V20a.5.5 0 01-.5.5h-10.5a.5.5 0 01-.5-.5V4a.5.5 0 01.5-.5zM14 3.5V8h4M9 13h6M9 16.5h4',
+  pen: 'M15.5 4.5l4 4L9 19l-5 1 1-5zM13.5 6.5l4 4',
+  highlighter: 'M14 4l6 6-7.5 7.5-6-6zM6.5 11.5l6 6L10 20H5.5l-1.5-1.5 2.5-2.5M4 21h16',
+  eraser: 'M8.5 19.5l-4-4a1.5 1.5 0 010-2.1l8.9-8.9a1.5 1.5 0 012.1 0l4 4a1.5 1.5 0 010 2.1L11.5 19.5zM9 10l5 5M8.5 19.5H20',
+  undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11',
+  trash: 'M4.5 6.5h15M10 3.5h4M6.5 6.5l1 13a1 1 0 001 1h7a1 1 0 001-1l1-13M10 10.5v6M14 10.5v6',
 } as const
 
 export type IconName = keyof typeof paths

@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
-export type TransitionStyle = 'turn' | 'fade' | 'none'
+export type TransitionStyle = 'turn' | 'drop' | 'fade' | 'none'
 
 export const TRANSITION_LABELS: Record<TransitionStyle, string> = {
   turn: 'Page turn',
+  drop: 'Drop',
   fade: 'Fade',
   none: 'No animation',
 }
 
 const STORAGE_KEY = 'fv.transition'
-const ORDER: TransitionStyle[] = ['turn', 'fade', 'none']
+const ORDER: TransitionStyle[] = ['turn', 'drop', 'fade', 'none']
 
 function readStored(): TransitionStyle {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
-    if (v === 'turn' || v === 'fade' || v === 'none') return v
+    if (v === 'turn' || v === 'drop' || v === 'fade' || v === 'none') return v
   } catch {
     /* storage unavailable */
   }
@@ -46,6 +47,7 @@ interface Pending {
 
 const TURN_MS = 650
 const FADE_MS = 320
+const DROP_MS = 820
 
 /**
  * Animates page changes for a single rendered page.
@@ -95,7 +97,11 @@ export function usePageTransition(
     const overlay = document.createElement('canvas')
     overlay.width = canvas.width
     overlay.height = canvas.height
-    overlay.getContext('2d')?.drawImage(canvas, 0, 0)
+    const ctx = overlay.getContext('2d')
+    ctx?.drawImage(canvas, 0, 0)
+    // Carry any drawn annotations along with the page.
+    const annot = container.querySelector<HTMLCanvasElement>('canvas[data-annot-canvas]')
+    if (ctx && annot && annot.width > 0) ctx.drawImage(annot, 0, 0, overlay.width, overlay.height)
     overlay.className = 'page-transition-overlay'
     overlay.setAttribute('aria-hidden', 'true')
     Object.assign(overlay.style, {
@@ -133,6 +139,33 @@ export function usePageTransition(
       const a = overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FADE_MS, easing: 'ease-out' })
       running.current.push(a)
       a.onfinish = a.oncancel = done
+      return
+    }
+
+    if (style === 'drop') {
+      // The sheet slides a little in the reading direction, tips, then falls
+      // away under "gravity" (accelerating ease-in) and fades as it leaves.
+      const fall = Math.round(window.innerHeight * 1.1)
+      const side = direction > 0 ? -1 : 1
+      overlay.style.transformOrigin = direction > 0 ? 'left bottom' : 'right bottom'
+      overlay.style.boxShadow = '0 24px 60px rgba(0,0,0,0.3)'
+      const a = overlay.animate(
+        [
+          { transform: 'translate(0, 0) rotate(0deg)', opacity: 1, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' },
+          { transform: `translate(${side * 6}%, -2%) rotate(${side * -3}deg)`, opacity: 1, offset: 0.22, easing: 'cubic-bezier(0.55, 0, 0.9, 0.4)' },
+          { transform: `translate(${side * 14}%, ${fall}px) rotate(${side * 14}deg)`, opacity: 0.6 },
+        ],
+        { duration: DROP_MS },
+      )
+      running.current.push(a)
+      a.onfinish = a.oncancel = done
+      if (newPage) {
+        const b = newPage.animate(
+          [{ transform: 'scale(0.97)', filter: 'brightness(0.8)' }, { transform: 'scale(1)', filter: 'brightness(1)' }],
+          { duration: DROP_MS * 0.7, easing: 'ease-out', delay: DROP_MS * 0.15, fill: 'backwards' },
+        )
+        running.current.push(b)
+      }
       return
     }
 

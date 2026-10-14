@@ -1,6 +1,7 @@
 import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react'
 import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { DocumentProvider, useDocument } from './state/DocumentContext'
+import { AnnotationProvider } from './state/AnnotationContext'
 import { FilePickerProvider, useFilePicker } from './components/FilePicker'
 import { LoadStatus } from './components/LoadStatus'
 import { EmptyState } from './components/EmptyState'
@@ -18,6 +19,7 @@ export default function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ErrorBoundary>
         <DocumentProvider>
+          <AnnotationProvider>
           <FilePickerProvider>
             <OpenNavigator />
             <Routes>
@@ -28,6 +30,7 @@ export default function App() {
             </Routes>
             <GlobalLoadStatus />
           </FilePickerProvider>
+          </AnnotationProvider>
         </DocumentProvider>
       </ErrorBoundary>
     </BrowserRouter>

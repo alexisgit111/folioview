@@ -89,3 +89,18 @@ test.describe('mobile', () => {
     await noHorizontalOverflow(page)
   })
 })
+
+test('mobile: draw with a finger and the stroke is kept', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await openDemo(page, 'harbourview')
+  await expect(page.locator('.single-stage .pdf-page')).toHaveAttribute('data-status', 'rendered')
+  await page.getByTestId('pen-toggle').tap()
+  await expect(page.getByTestId('annotation-toolbar')).toBeVisible()
+  await noHorizontalOverflow(page)
+  const box = (await page.locator('.single-stage canvas[data-annot-canvas]').boundingBox())!
+  const y = box.y + box.height * 0.5
+  await swipe(page, { x: box.x + box.width * 0.8, y }, { x: box.x + box.width * 0.2, y: y + 40 }, 12)
+  await expect(page.locator('.single-stage canvas[data-annot-canvas]')).toHaveAttribute('data-strokes', '1')
+  expect(await announcer(page)).toBe('Page 1 of 12')
+})

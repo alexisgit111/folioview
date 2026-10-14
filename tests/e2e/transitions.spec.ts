@@ -38,6 +38,8 @@ test.describe('page transitions', () => {
     const toggle = page.getByTestId('transition-toggle')
     await expect(toggle).toHaveAttribute('aria-label', /Page turn/)
     await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-label', /Drop/)
+    await toggle.click()
     await expect(toggle).toHaveAttribute('aria-label', /Fade/)
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-label', /No animation/)
