@@ -7,6 +7,7 @@ import { IconButton } from '../components/ui/Button'
 import { containSize } from '../lib/pdf/geometry'
 import { isTypingTarget, useElementSize, useIdle, useReducedMotion, useSwipe } from '../lib/hooks'
 import { enterFullscreen, exitFullscreen, fullscreenSupported, isFullscreen } from '../lib/features'
+import { TRANSITION_LABELS, usePageTransition, useTransitionStyle } from '../lib/pageTransition'
 
 const IDLE_MS = 2500
 const STAGE_MARGIN = 24
@@ -21,6 +22,9 @@ export function PresentPage() {
   const [idle, poke] = useIdle(IDLE_MS)
   const canFullscreen = fullscreenSupported()
   const wasFullscreen = useRef(isFullscreen())
+  const [transition, cycleTransition] = useTransitionStyle()
+  const slideWrapRef = useRef<HTMLDivElement>(null)
+  const onSlideRendered = usePageTransition(slideWrapRef, page, transition, reducedMotion)
 
   const exit = useCallback(() => {
     void exitFullscreen()
@@ -140,7 +144,7 @@ export function PresentPage() {
     >
       <div
         ref={stageRef}
-        className="absolute inset-0 grid place-items-center"
+        className="absolute inset-0 isolate grid place-items-center overflow-hidden"
         style={{ touchAction: 'pan-y pinch-zoom' }}
         onPointerDown={(e) => {
           downAt.current = { x: e.clientX, y: e.clientY }
@@ -160,14 +164,17 @@ export function PresentPage() {
         data-testid="present-stage"
       >
         {fit.width > 0 && (
-          <PdfPage
-            pdf={doc.pdf}
-            pageIndex={page}
-            width={fit.width}
-            height={fit.height}
-            label={`Slide ${page + 1} of ${doc.pageCount}`}
-            className="shadow-[0_20px_80px_rgba(0,0,0,0.5)]"
-          />
+          <div ref={slideWrapRef} className="relative">
+            <PdfPage
+              pdf={doc.pdf}
+              pageIndex={page}
+              width={fit.width}
+              height={fit.height}
+              label={`Slide ${page + 1} of ${doc.pageCount}`}
+              className="shadow-[0_20px_80px_rgba(0,0,0,0.5)]"
+              onRendered={onSlideRendered}
+            />
+          </div>
         )}
         {/* Warm the next page so advancing feels instant. */}
         {fit.width > 0 && page + 1 < doc.pageCount && (
@@ -194,6 +201,17 @@ export function PresentPage() {
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/50 to-transparent p-4">
           <p className="max-w-[60%] truncate pt-2 text-sm text-canvas/80">{doc.title}</p>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={cycleTransition}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-canvas/85 hover:bg-white/10 hover:text-canvas"
+              aria-label={`Page transition: ${TRANSITION_LABELS[transition]}. Click to change.`}
+              title="Change page transition"
+              data-testid="transition-toggle"
+            >
+              <Icon name="book" size={16} />
+              {TRANSITION_LABELS[transition]}
+            </button>
             {canFullscreen && (
               <IconButton
                 variant="dark"

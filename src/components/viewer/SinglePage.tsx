@@ -3,6 +3,7 @@ import type { OpenDocument } from '../../state/DocumentContext'
 import { useElementSize, useSwipe } from '../../lib/hooks'
 import { fitScale, type ZoomMode } from '../../lib/pdf/geometry'
 import { PdfPage } from './PdfPage'
+import { usePageTransition, type TransitionStyle } from '../../lib/pageTransition'
 import type { NavigationHandle } from './types'
 
 /** PDF.js convention: "100%" shows 72pt as 96 CSS px. */
@@ -19,15 +20,19 @@ interface SinglePageProps {
   onEffectiveZoom: (zoom: number) => void
   showThumbnails: boolean
   getPageSize: (index: number) => { width: number; height: number }
+  transition: TransitionStyle
+  reducedMotion: boolean
 }
 
 const STAGE_PADDING = 24
 
 export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function SinglePage(
-  { doc, page, onPageChange, zoomMode, zoom, onEffectiveZoom, showThumbnails, getPageSize },
+  { doc, page, onPageChange, zoomMode, zoom, onEffectiveZoom, showThumbnails, getPageSize, transition, reducedMotion },
   ref,
 ) {
   const [stageRef, stage] = useElementSize<HTMLDivElement>()
+  const pageWrapRef = useRef<HTMLDivElement>(null)
+  const onPageRendered = usePageTransition(pageWrapRef, page, transition, reducedMotion)
   const size = getPageSize(page)
   // useElementSize reports the content box, i.e. already inside the padding.
   const box = { width: Math.max(0, stage.width), height: Math.max(0, stage.height) }
@@ -65,8 +70,13 @@ export const SinglePage = forwardRef<NavigationHandle, SinglePageProps>(function
         data-testid="single-stage"
       >
         {stage.width > 0 && (
-          <div className="mx-auto flex min-h-full items-center justify-center" style={{ width: Math.max(width, box.width) }}>
+          <div
+            ref={pageWrapRef}
+            className="relative mx-auto flex min-h-full items-center justify-center"
+            style={{ width: Math.max(width, box.width) }}
+          >
             <PdfPage
+              onRendered={onPageRendered}
               pdf={doc.pdf}
               pageIndex={page}
               width={width}

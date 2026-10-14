@@ -12,6 +12,7 @@ import { clampZoom, nextZoom, type ZoomMode } from '../lib/pdf/geometry'
 import { describeSpread, spreadForPage } from '../lib/pdf/spreads'
 import { enterFullscreen } from '../lib/features'
 import { EmptyState } from '../components/EmptyState'
+import { TRANSITION_LABELS, useTransitionStyle } from '../lib/pageTransition'
 
 export function ViewerPage() {
   const { doc, page, setPage, getPageSize } = useDocument()
@@ -40,6 +41,7 @@ export function ViewerPage() {
   const [showThumbs, setShowThumbs] = useState(true)
   const [flipPortrait, setFlipPortrait] = useState(false)
   const navRef = useRef<NavigationHandle>(null)
+  const [transition, cycleTransition] = useTransitionStyle()
 
   const pageCount = doc?.pageCount ?? 0
   const spread = mode === 'flipbook' && !flipPortrait && !narrow ? spreadForPage(page, pageCount) : [page]
@@ -197,6 +199,8 @@ export function ViewerPage() {
             onEffectiveZoom={setEffectiveZoom}
             showThumbnails={showThumbs}
             getPageSize={getPageSize}
+            transition={transition}
+            reducedMotion={reducedMotion}
           />
         )}
       </main>
@@ -212,6 +216,19 @@ export function ViewerPage() {
               onClick={() => setShowThumbs((v) => !v)}
               className="max-md:hidden"
             />
+          )}
+          {mode === 'single' && (
+            <button
+              type="button"
+              onClick={cycleTransition}
+              className="inline-flex h-11 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-ink/70 hover:bg-stone/50 hover:text-ink sm:px-3"
+              aria-label={`Page transition: ${TRANSITION_LABELS[transition]}. Click to change.`}
+              title="Change page transition"
+              data-testid="transition-toggle"
+            >
+              <Icon name="book" size={17} />
+              <span className="hidden lg:inline">{TRANSITION_LABELS[transition]}</span>
+            </button>
           )}
         </div>
 
