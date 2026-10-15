@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Icon, type IconName } from './Icon'
 
 type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'dark'
-type Size = 'sm' | 'md' | 'lg'
+type Size = 'sm' | 'md' | 'lg' | 'xl'
 
 const variants: Record<Variant, string> = {
   primary: 'bg-ink text-canvas hover:bg-accent hover:text-ink active:bg-accent',
@@ -16,6 +16,7 @@ const sizes: Record<Size, string> = {
   sm: 'h-9 px-3 text-[13px] gap-1.5',
   md: 'h-11 px-4 text-sm gap-2',
   lg: 'h-12 px-6 text-[15px] gap-2.5',
+  xl: 'h-14 px-9 text-lg gap-3',
 }
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

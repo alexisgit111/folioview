@@ -24,23 +24,23 @@ export function DashboardPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-ink text-ink">
-      <div className="flex-1 bg-ink text-canvas">
-        <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-8">
+      <div className="flex min-h-dvh flex-1 flex-col bg-ink text-canvas">
+        <header className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 border-b border-white/10 px-5 py-5 sm:px-10 lg:px-16">
           <Wordmark />
-          <p className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-canvas/85" data-testid="local-status">
+          <p className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-canvas/85 sm:px-4 sm:py-2 sm:text-sm" data-testid="local-status">
             <Icon name="shield" size={15} className="text-accent" />
             <span>Local-only<span className="hidden sm:inline"> · files never leave this device</span></span>
           </p>
         </header>
 
-        <section className="mx-auto grid max-w-6xl gap-10 px-5 pb-14 pt-10 sm:px-8 md:grid-cols-[1.05fr_1fr] md:items-center md:gap-14 md:pb-20 md:pt-16">
+        <section className="mx-auto grid w-full max-w-[1600px] flex-1 content-center gap-10 px-5 py-10 sm:px-10 md:grid-cols-[1.15fr_1fr] md:items-center md:gap-16 lg:px-16 lg:py-16 xl:gap-24">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent sm:text-xs sm:tracking-[0.2em]">Harcourts Golden Links · Internal Platform</p>
-            <h1 className="mt-4 font-display text-[clamp(2.3rem,4.6vw,3.5rem)] leading-[1.05] tracking-[-0.015em]">
-              Bring every PDF <br className="hidden sm:block" />
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent sm:text-sm sm:tracking-[0.22em] xl:text-base">Harcourts Golden Links · Internal Platform</p>
+            <h1 className="mt-5 font-display text-[clamp(2.6rem,5.4vw,6.25rem)] leading-[1.02] tracking-[-0.02em]">
+              <span className="sm:whitespace-nowrap">Bring every PDF</span> <br className="hidden sm:block" />
               <span className="whitespace-nowrap text-accent">to life.</span>
             </h1>
-            <p className="mt-5 max-w-md text-[17px] leading-relaxed text-canvas/75">
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-canvas/75 sm:text-xl xl:text-2xl xl:leading-relaxed">
               Turn property brochures, portfolios, and presentations into interactive, page-turning experiences. Designed exclusively for the
               Harcourts Golden Links team.
             </p>
@@ -75,24 +75,24 @@ export function DashboardPage() {
 function Wordmark() {
   return (
     <Link to="/" className="inline-flex items-center" aria-label="FolioView home">
-      <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Harcourts Golden Links" className="h-7 w-auto sm:h-9" />
+      <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Harcourts Golden Links" className="h-7 w-auto sm:h-10 2xl:h-12" />
     </Link>
   )
 }
 
 function DropZone({ onPick, disabled }: { onPick: () => void; disabled: boolean }) {
   return (
-    <div className="relative rounded-lg bg-canvas p-8 text-center text-ink shadow-dialog ring-1 ring-white/10 sm:p-12">
+    <div className="relative rounded-lg bg-canvas p-8 text-center text-ink shadow-dialog ring-1 ring-white/10 sm:p-14 xl:p-20">
       <div className="pointer-events-none absolute inset-3 rounded-md border-2 border-dashed border-stone" aria-hidden="true" />
-      <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-md bg-accent text-ink">
+      <div className="relative mx-auto grid h-14 w-14 place-items-center rounded-md bg-accent text-ink xl:h-20 xl:w-20">
         <Icon name="upload" size={24} />
       </div>
-      <p className="relative mt-5 font-display text-2xl">Drop a PDF anywhere</p>
-      <p className="mt-1.5 text-sm text-ink/60">or choose one from your device</p>
-      <Button variant="primary" size="lg" className="mt-6" onClick={onPick} disabled={disabled} data-testid="choose-pdf">
+      <p className="relative mt-6 font-display text-2xl sm:text-3xl xl:text-4xl">Drop a PDF anywhere</p>
+      <p className="mt-2 text-base text-ink/60 xl:text-lg">or choose one from your device</p>
+      <Button variant="primary" size="xl" className="mt-8" onClick={onPick} disabled={disabled} data-testid="choose-pdf">
         Choose PDF
       </Button>
-      <p className="mt-5 text-xs text-ink/50">Up to {config.maxUploadMb} MB · password-protected PDFs supported</p>
+      <p className="mt-6 text-xs text-ink/50 sm:text-sm">Up to {config.maxUploadMb} MB · password-protected PDFs supported</p>
     </div>
   )
 }
