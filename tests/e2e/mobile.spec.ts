@@ -120,3 +120,20 @@ test('mobile: presentation swipes left/right and up/down', async ({ page }) => {
   await swipe(page, { x: cx, y: vp.height * 0.3 }, { x: cx, y: vp.height * 0.8 })
   await expect(page.getByTestId('present-indicator')).toHaveText('2 / 7')
 })
+
+test('mobile: page carousel swipes and taps', async ({ page }) => {
+  await openDemo(page, 'deck')
+  await page.getByRole('button', { name: 'Present fullscreen' }).tap()
+  await expect(page.locator('[aria-label="Slide 1 of 7"]')).toHaveAttribute('data-status', 'rendered')
+  await page.getByTestId('present-stage').tap({ position: { x: 300, y: 200 } })
+  await page.getByTestId('carousel-button').tap()
+  await expect(page.getByTestId('page-carousel')).toBeVisible()
+  const vp = page.viewportSize()!
+  await swipe(page, { x: vp.width * 0.8, y: vp.height / 2 }, { x: vp.width * 0.2, y: vp.height / 2 })
+  await expect(page.getByTestId('carousel-indicator')).not.toContainText(/^\s*1\s/)
+  const shown = (await page.getByTestId('carousel-indicator').textContent())!.trim().split(' ')[0]
+  await page.waitForTimeout(1200)
+  await page.locator(`[data-carousel-index="${Number(shown) - 1}"]`).tap()
+  await expect(page.getByTestId('page-carousel')).toHaveCount(0)
+  await expect(page.getByTestId('present-indicator')).toHaveText(`${shown} / 7`)
+})

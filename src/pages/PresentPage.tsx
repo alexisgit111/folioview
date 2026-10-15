@@ -13,6 +13,7 @@ import { AnnotationLayer } from '../components/annotations/AnnotationLayer'
 import { AnnotationToolbar, PenToggle } from '../components/annotations/AnnotationToolbar'
 import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
 import { useAnnotations } from '../state/AnnotationContext'
+import { PageCarousel } from '../components/present/PageCarousel'
 
 const IDLE_MS = 2500
 const JUMP_TIMEOUT_MS = 4000
@@ -43,6 +44,7 @@ export function PresentPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const dismissEvent = useRef<Event | null>(null)
   const [showHelp, setShowHelp] = useState(false)
+  const [carouselOpen, setCarouselOpen] = useState(false)
   // Typed slide number (e.g. "1", "12") waiting for Enter.
   const [jump, setJumpState] = useState<{ text: string; error?: boolean }>({ text: '' })
   const jumpRef = useRef('')
@@ -57,7 +59,7 @@ export function PresentPage() {
   const slideWrapRef = useRef<HTMLDivElement>(null)
   const onSlideRendered = usePageTransition(slideWrapRef, page, transition, reducedMotion)
   const { active: drawing } = useAnnotations()
-  useAnnotationShortcuts(Boolean(doc))
+  useAnnotationShortcuts(Boolean(doc) && !carouselOpen)
 
   const exit = useCallback(() => {
     void exitFullscreen()
@@ -171,6 +173,12 @@ export function PresentPage() {
           e.preventDefault()
           void toggleFullscreen()
           break
+        case 'o':
+        case 'O':
+          e.preventDefault()
+          setShowHelp(false)
+          setCarouselOpen(true)
+          break
         case '?':
         case 'h':
         case 'H':
@@ -254,7 +262,7 @@ export function PresentPage() {
     width: Math.max(0, stage.width - STAGE_MARGIN * 2),
     height: Math.max(0, stage.height - STAGE_MARGIN * 2),
   })
-  const hidden = idle && !controlsFocused && !drawing && !settingsOpen && !showHelp
+  const hidden = (idle && !controlsFocused && !drawing && !settingsOpen && !showHelp) || carouselOpen
   const fade = reducedMotion ? '' : 'transition-opacity duration-500'
 
   return (
@@ -350,6 +358,7 @@ export function PresentPage() {
               onClick={() => void toggleFullscreen()}
             />
           )}
+          <IconButton variant="dark" icon="carousel" label="Page carousel" onClick={() => setCarouselOpen(true)} data-testid="carousel-button" />
           <IconButton variant="dark" icon="keyboard" label="Keyboard shortcuts" pressed={showHelp} onClick={() => setShowHelp((v) => !v)} className="max-sm:hidden" />
           <TransitionSettings
             settings={transition}
@@ -404,6 +413,21 @@ export function PresentPage() {
 
       {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
 
+      {carouselOpen && (
+        <PageCarousel
+          pdf={doc.pdf}
+          pageCount={doc.pageCount}
+          current={page}
+          getPageSize={getPageSize}
+          reducedMotion={reducedMotion}
+          onPick={(i) => {
+            setCarouselOpen(false)
+            setPage(i)
+          }}
+          onClose={() => setCarouselOpen(false)}
+        />
+      )}
+
       <p className="sr-only" aria-live="polite">Slide {page + 1} of {doc.pageCount}</p>
     </div>
   )
@@ -417,6 +441,7 @@ const SHORTCUTS: Array<[string[], string]> = [
   [['Click'], 'Next slide (tap the left third on touch screens to go back)'],
   [['Swipe'], 'Next / previous on phone and iPad'],
   [['Scroll'], 'Mouse wheel or trackpad: down = next, up = previous'],
+  [['O'], 'Page carousel — browse pages in 3D, click one to present it'],
   [['P'], 'Draw on the slide'],
   [['F'], 'Toggle fullscreen'],
   [['Esc'], 'Leave fullscreen / end presentation'],

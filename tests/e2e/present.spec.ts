@@ -173,6 +173,44 @@ test.describe('presentation mode', () => {
     expect(panel.y).toBeGreaterThanOrEqual(0)
   })
 
+  test('page carousel: browse in 3D, pick a page, or back out', async ({ page }) => {
+    const errors = trackErrors(page)
+    await startPresenting(page)
+    await page.keyboard.press('ArrowRight')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    await page.mouse.move(500, 300)
+    await page.getByTestId('carousel-button').click()
+    const carousel = page.getByTestId('page-carousel')
+    await expect(carousel).toBeVisible()
+    await expect(page.getByTestId('carousel-indicator')).toContainText('2')
+    // thumbnails render
+    await expect(carousel.locator('[data-carousel-index="1"] img').first()).toBeVisible()
+    // arrows browse the carousel, not the slides behind it
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(page.getByTestId('carousel-indicator')).toContainText('4')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    // Esc backs out without changing slide
+    await page.keyboard.press('Escape')
+    await expect(carousel).toHaveCount(0)
+    await expect(indicator(page)).toHaveText('2 / 7')
+    await expect(page).toHaveURL(/\/present/)
+    // O opens it again; Enter presents the focused page
+    await page.keyboard.press('o')
+    await expect(carousel).toBeVisible()
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Enter')
+    await expect(carousel).toHaveCount(0)
+    await expect(indicator(page)).toHaveText('3 / 7')
+    // clicking a neighbouring page presents that page
+    await page.keyboard.press('o')
+    await page.waitForTimeout(800)
+    await carousel.locator('[data-carousel-index="4"]').click()
+    await expect(carousel).toHaveCount(0)
+    await expect(indicator(page)).toHaveText('5 / 7')
+    expect(errors).toEqual([])
+  })
+
   test('? shows the shortcut list', async ({ page }) => {
     await startPresenting(page)
     await page.keyboard.press('Shift+Slash')

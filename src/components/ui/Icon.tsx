@@ -28,6 +28,7 @@ const paths = {
   'chevron-down': 'M6 9l6 6 6-6',
   'chevron-up': 'M6 15l6-6 6 6',
   keyboard: 'M3.5 7h17v10h-17zM7 10.5h.5M10 10.5h.5M13 10.5h.5M16.5 10.5h.5M8 14h8',
+  carousel: 'M8.5 5.5h7v13h-7zM2.5 8l3.5 1v6l-3.5 1zM21.5 8l-3.5 1v6l3.5 1z',
   trash: 'M4.5 6.5h15M10 3.5h4M6.5 6.5l1 13a1 1 0 001 1h7a1 1 0 001-1l1-13M10 10.5v6M14 10.5v6',
 } as const
 
