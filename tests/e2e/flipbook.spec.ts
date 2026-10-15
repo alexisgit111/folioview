@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { announcer, canvasHasInk, noHorizontalOverflow, openDemo, trackErrors, waitForFlipbook } from './helpers'
+import { announcer, canvasHasInk, noHorizontalOverflow, openDemo, trackErrors, uploadFixture, waitForFlipbook } from './helpers'
 
 test.describe('flipbook mode', () => {
   test('opens on the cover and turns pages with the keyboard', async ({ page }) => {
@@ -123,4 +123,26 @@ test.describe('flipbook mode', () => {
     await waitForFlipbook(page)
     await expect.poll(() => announcer(page)).toBe('Pages 4–5 of 12')
   })
+})
+
+test('turning pages never makes the window scroll (no scrollbar flicker)', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 760 })
+  await page.goto('/')
+  await uploadFixture(page, 'a4-landscape.pdf')
+  await waitForFlipbook(page)
+  await page.evaluate(() => {
+    const w = window as unknown as { __over: number }
+    w.__over = 0
+    const tick = () => {
+      const d = document.documentElement
+      w.__over = Math.max(w.__over, d.scrollHeight - d.clientHeight, d.scrollWidth - d.clientWidth)
+      requestAnimationFrame(tick)
+    }
+    tick()
+  })
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(1200)
+  }
+  expect(await page.evaluate(() => (window as unknown as { __over: number }).__over)).toBe(0)
 })

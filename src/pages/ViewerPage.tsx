@@ -136,7 +136,7 @@ export function ViewerPage() {
   const pageLabel = describeSpread(spread, pageCount)
 
   return (
-    <div className="flex h-dvh flex-col bg-canvas text-ink">
+    <div className="flex h-dvh flex-col overflow-hidden bg-canvas text-ink">
       {/* Top bar */}
       <header className="flex h-16 shrink-0 items-center gap-2 bg-ink px-2 text-canvas sm:gap-3 sm:px-4">
         <Link
@@ -183,7 +183,7 @@ export function ViewerPage() {
       </header>
 
       {/* Stage */}
-      <main className={`relative min-h-0 flex-1 ${mode === 'flipbook' ? 'flip-stage-bg' : 'bg-mist'}`} aria-label="Document viewer">
+      <main className={`relative min-h-0 flex-1 overflow-hidden ${mode === 'flipbook' ? 'flip-stage-bg' : 'bg-mist'}`} aria-label="Document viewer">
         {mode === 'flipbook' ? (
           <div className="absolute inset-0 px-3 py-6 sm:px-16 sm:py-10">
             <Flipbook
