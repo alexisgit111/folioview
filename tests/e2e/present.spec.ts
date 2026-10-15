@@ -121,6 +121,49 @@ test.describe('presentation mode', () => {
     await expect(indicator(page)).toHaveText('2 / 7')
   })
 
+  test('mouse wheel turns one slide per gesture', async ({ page }) => {
+    await startPresenting(page)
+    await page.mouse.move(600, 400)
+    await page.mouse.wheel(0, 120)
+    await expect(indicator(page)).toHaveText('2 / 7')
+    // a trackpad swipe: a burst of small, decaying events = one slide
+    await page.waitForTimeout(400)
+    for (const d of [8, 20, 30, 26, 18, 12, 8, 5, 3, 2, 1]) {
+      await page.mouse.wheel(0, d)
+      await page.waitForTimeout(16)
+    }
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await page.waitForTimeout(400)
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await page.mouse.wheel(0, -120)
+    await expect(indicator(page)).toHaveText('2 / 7')
+    // wheel doesn't bring the toolbar back
+    await expect(page.locator('.present-root')).toHaveAttribute('data-controls', 'hidden', { timeout: 6000 })
+    await page.mouse.wheel(0, 120)
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await expect(page.locator('.present-root')).toHaveAttribute('data-controls', 'hidden')
+  })
+
+  test('slides fill the screen edge to edge, controls sit in a bottom-right column', async ({ page }) => {
+    await startPresenting(page)
+    const vp = page.viewportSize()!
+    const box = (await page.locator('[aria-label="Slide 1 of 7"]').boundingBox())!
+    // the slide touches two opposite edges of the screen
+    const fillsWidth = Math.abs(box.width - vp.width) <= 1
+    const fillsHeight = Math.abs(box.height - vp.height) <= 1
+    expect(fillsWidth || fillsHeight).toBe(true)
+    await page.mouse.move(500, 300)
+    const rail = (await page.getByTestId('present-rail').boundingBox())!
+    expect(rail.height).toBeGreaterThan(rail.width * 3) // vertical
+    expect(vp.width - (rail.x + rail.width)).toBeLessThan(40)
+    expect(vp.height - (rail.y + rail.height)).toBeLessThan(40)
+    // the transition panel opens to the left of the rail
+    await page.getByTestId('transition-settings').click()
+    const panel = (await page.getByTestId('transition-panel').boundingBox())!
+    expect(panel.x + panel.width).toBeLessThanOrEqual(rail.x)
+    expect(panel.y).toBeGreaterThanOrEqual(0)
+  })
+
   test('? shows the shortcut list', async ({ page }) => {
     await startPresenting(page)
     await page.keyboard.press('Shift+Slash')

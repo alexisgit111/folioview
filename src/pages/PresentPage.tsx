@@ -19,7 +19,7 @@ const JUMP_TIMEOUT_MS = 4000
 
 /** Only real mouse movement, wheel or a touch reveals the controls — not keys or clicks. */
 const ACTIVITY = {
-  events: ['pointermove', 'pointerdown', 'wheel'],
+  events: ['pointermove', 'pointerdown'],
   filter: (e: Event) => {
     const p = e as PointerEvent
     if (e.type === 'pointerdown') return p.pointerType !== 'mouse'
@@ -27,7 +27,7 @@ const ACTIVITY = {
     return true
   },
 } as const
-const STAGE_MARGIN = 24
+const STAGE_MARGIN = 0 // edge to edge
 
 export function PresentPage() {
   const { doc, page, setPage, getPageSize } = useDocument()
@@ -186,6 +186,42 @@ export function PresentPage() {
   const showHelpRef = useRef(false)
   showHelpRef.current = showHelp
 
+  // Mouse wheel / trackpad: one gesture turns one slide. A trackpad's inertia
+  // keeps sending events, so stay locked until the wheel goes quiet — unless a
+  // clearly new, stronger flick starts.
+  const wheel = useRef({ acc: 0, locked: false, lockedAt: 0, last: 0, timer: undefined as ReturnType<typeof setTimeout> | undefined })
+  useEffect(() => {
+    if (!doc) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return // pinch-zoom
+      if ((e.target as HTMLElement | null)?.closest?.('[role="dialog"]')) return
+      const raw = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+      const px = e.deltaMode === 1 ? raw * 40 : e.deltaMode === 2 ? raw * 800 : raw
+      const w = wheel.current
+      clearTimeout(w.timer)
+      w.timer = setTimeout(() => {
+        w.locked = false
+        w.acc = 0
+      }, 220)
+      const now = performance.now()
+      if (w.locked && now - w.lockedAt > 450 && Math.abs(px) > w.last * 1.6 + 4) w.locked = false
+      w.last = Math.abs(px)
+      if (w.locked) return
+      w.acc += px
+      if (Math.abs(w.acc) >= 40) {
+        if (w.acc > 0) next()
+        else prev()
+        w.acc = 0
+        w.locked = true
+        w.lockedAt = now
+      }
+    }
+    window.addEventListener('wheel', onWheel, { passive: true })
+    // Keep the unlock timer running across re-subscriptions (they happen on every slide change).
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [doc, next, prev])
+  useEffect(() => () => clearTimeout(wheel.current.timer), [])
+
   const toggleFullscreen = async () => {
     if (isFullscreen()) {
       wasFullscreen.current = false // stay in presentation, just leave fullscreen
@@ -290,42 +326,49 @@ export function PresentPage() {
         onPointerMove={poke}
         data-testid="present-controls"
       >
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 bg-gradient-to-b from-black/50 to-transparent p-4">
-          <p className="max-w-[60%] truncate pt-2 text-sm text-canvas/80">{doc.title}</p>
-          <div className="flex items-center gap-1">
-            <PenToggle tone="dark" />
-            <TransitionSettings
-              settings={transition}
-              onChange={setTransition}
-              tone="dark"
-              placement="down"
-              align="right"
-              onOpenChange={(o, closedBy) => {
-                setSettingsOpen(o)
-                dismissEvent.current = closedBy ?? null
-              }}
-            />
-            <IconButton variant="dark" icon="keyboard" label="Keyboard shortcuts" pressed={showHelp} onClick={() => setShowHelp((v) => !v)} className="max-sm:hidden" />
-            {canFullscreen && (
-              <IconButton
-                variant="dark"
-                icon={fullscreen ? 'shrink' : 'expand'}
-                label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-                onClick={() => void toggleFullscreen()}
-              />
-            )}
-            <IconButton variant="dark" icon="close" label="End presentation" onClick={exit} />
-          </div>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 bg-gradient-to-t from-black/50 to-transparent p-5">
+        <p className="absolute left-4 top-4 max-w-[50%] truncate rounded bg-black/45 px-3 py-1.5 text-sm text-canvas/85 backdrop-blur">{doc.title}</p>
+
+        {/* Annotation tools, centred at the bottom while drawing */}
+        <div className="absolute inset-x-0 bottom-4 flex justify-center px-20">
           <AnnotationToolbar page={page} tone="dark" />
-          <div className="flex items-center gap-2 rounded-full bg-black/40 px-2 py-1 text-canvas backdrop-blur">
-            <IconButton variant="dark" icon="arrow-left" label="Previous slide" onClick={prev} disabled={page === 0} />
-            <span className="min-w-16 text-center text-sm tabular-nums" data-testid="present-indicator">
-              {page + 1} / {doc.pageCount}
-            </span>
-            <IconButton variant="dark" icon="arrow-right" label="Next slide" onClick={next} disabled={page >= doc.pageCount - 1} />
-          </div>
+        </div>
+
+        {/* Presenter rail: bottom-right, within thumb reach on a touch screen */}
+        <div
+          className="absolute bottom-4 right-4 flex flex-col items-center gap-0.5 rounded-2xl bg-black/50 p-1.5 text-canvas shadow-dialog ring-1 ring-white/10 backdrop-blur"
+          role="toolbar"
+          aria-orientation="vertical"
+          aria-label="Presentation controls"
+          data-testid="present-rail"
+        >
+          <IconButton variant="dark" icon="close" label="End presentation" onClick={exit} />
+          {canFullscreen && (
+            <IconButton
+              variant="dark"
+              icon={fullscreen ? 'shrink' : 'expand'}
+              label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              onClick={() => void toggleFullscreen()}
+            />
+          )}
+          <IconButton variant="dark" icon="keyboard" label="Keyboard shortcuts" pressed={showHelp} onClick={() => setShowHelp((v) => !v)} className="max-sm:hidden" />
+          <TransitionSettings
+            settings={transition}
+            onChange={setTransition}
+            tone="dark"
+            iconOnly
+            placement="left"
+            onOpenChange={(o, closedBy) => {
+              setSettingsOpen(o)
+              dismissEvent.current = closedBy ?? null
+            }}
+          />
+          <PenToggle tone="dark" iconOnly />
+          <span className="my-1 h-px w-8 bg-white/15" aria-hidden="true" />
+          <IconButton variant="dark" icon="chevron-up" label="Previous slide" onClick={prev} disabled={page === 0} />
+          <span className="whitespace-nowrap py-0.5 text-center text-[11px] font-semibold tabular-nums text-canvas/85" data-testid="present-indicator">
+            {page + 1} / {doc.pageCount}
+          </span>
+          <IconButton variant="dark" icon="chevron-down" label="Next slide" onClick={next} disabled={page >= doc.pageCount - 1} />
         </div>
         {!canFullscreen && (
           <p role="note" className="absolute left-1/2 top-16 -translate-x-1/2 rounded-full bg-black/50 px-4 py-2 text-xs text-canvas/80">
@@ -373,6 +416,7 @@ const SHORTCUTS: Array<[string[], string]> = [
   [['Home', 'End'], 'First / last slide'],
   [['Click'], 'Next slide (tap the left third on touch screens to go back)'],
   [['Swipe'], 'Next / previous on phone and iPad'],
+  [['Scroll'], 'Mouse wheel or trackpad: down = next, up = previous'],
   [['P'], 'Draw on the slide'],
   [['F'], 'Toggle fullscreen'],
   [['Esc'], 'Leave fullscreen / end presentation'],

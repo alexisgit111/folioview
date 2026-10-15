@@ -99,7 +99,7 @@ export function AnnotationToolbar({ page, tone = 'light' }: Props) {
 }
 
 /** The button that switches drawing on/off. */
-export function PenToggle({ tone = 'light', className = '' }: { tone?: 'light' | 'dark'; className?: string }) {
+export function PenToggle({ tone = 'light', className = '', iconOnly = false }: { tone?: 'light' | 'dark'; className?: string; iconOnly?: boolean }) {
   const { active, setActive } = useAnnotations()
   const dark = tone === 'dark'
   return (
@@ -110,7 +110,7 @@ export function PenToggle({ tone = 'light', className = '' }: { tone?: 'light' |
       aria-label={active ? 'Stop drawing' : 'Draw on page'}
       title="Draw (P)"
       data-testid="pen-toggle"
-      className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded px-3 text-[13px] font-semibold transition-colors ${
+      className={`inline-flex h-11 shrink-0 items-center gap-1.5 rounded ${iconOnly ? 'w-11 justify-center' : 'px-3'} text-[13px] font-semibold transition-colors ${
         active
           ? 'bg-accent text-ink'
           : dark
@@ -119,7 +119,7 @@ export function PenToggle({ tone = 'light', className = '' }: { tone?: 'light' |
       } ${className}`}
     >
       <Icon name="pen" size={17} />
-      <span className="hidden lg:inline">Draw</span>
+      {!iconOnly && <span className="hidden lg:inline">Draw</span>}
     </button>
   )
 }

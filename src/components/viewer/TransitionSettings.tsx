@@ -17,8 +17,10 @@ interface Props {
   tone?: 'light' | 'dark'
   /** Hide the text label on narrow screens (icon only). */
   compact?: boolean
+  /** Show just the icon (label in the tooltip). */
+  iconOnly?: boolean
   /** Which way the panel opens from the button. */
-  placement?: 'up' | 'down'
+  placement?: 'up' | 'down' | 'left'
   align?: 'left' | 'right'
   /** `closedBy` is the pointerdown that dismissed the panel, if any. */
   onOpenChange?: (open: boolean, closedBy?: Event) => void
@@ -33,7 +35,7 @@ const DIRECTIONS: Array<{ id: TransitionDirection; arrow: string }> = [
 const SPEEDS: TransitionSpeed[] = ['slow', 'normal', 'fast']
 
 /** Button + panel for choosing the page animation, its direction and speed. */
-export function TransitionSettings({ settings, onChange, tone = 'light', compact = false, placement = 'down', align = 'right', onOpenChange }: Props) {
+export function TransitionSettings({ settings, onChange, tone = 'light', compact = false, iconOnly = false, placement = 'down', align = 'right', onOpenChange }: Props) {
   const [open, setOpenState] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -82,15 +84,19 @@ export function TransitionSettings({ settings, onChange, tone = 'light', compact
         aria-controls={panelId}
         aria-haspopup="dialog"
         aria-label={`Transition settings: ${TRANSITION_LABELS[settings.style]}`}
-        title="Transition settings"
+        title={`Transition: ${TRANSITION_LABELS[settings.style]}`}
         data-testid="transition-settings"
-        className={`inline-flex h-11 items-center gap-1.5 rounded px-2 text-[13px] font-semibold transition-colors sm:px-3 ${
+        className={`inline-flex h-11 items-center justify-center gap-1.5 rounded ${iconOnly ? 'w-11' : 'px-2 sm:px-3'} text-[13px] font-semibold transition-colors ${
           open ? (dark ? 'bg-white/15 text-canvas' : 'bg-stone/60 text-ink') : dark ? 'text-canvas/85 hover:bg-white/10 hover:text-canvas' : 'text-ink/75 hover:bg-stone/50 hover:text-ink'
         }`}
       >
         <Icon name="transition" size={17} />
-        <span className={compact ? 'hidden lg:inline' : ''}>{TRANSITION_LABELS[settings.style]}</span>
-        <Icon name="chevron-down" size={14} className={`${compact ? 'hidden lg:inline' : ''} ${open ? 'rotate-180' : ''}`} />
+        {!iconOnly && (
+          <>
+            <span className={compact ? 'hidden lg:inline' : ''}>{TRANSITION_LABELS[settings.style]}</span>
+            <Icon name="chevron-down" size={14} className={`${compact ? 'hidden lg:inline' : ''} ${open ? 'rotate-180' : ''}`} />
+          </>
+        )}
       </button>
 
       {open && (
@@ -102,8 +108,8 @@ export function TransitionSettings({ settings, onChange, tone = 'light', compact
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => e.stopPropagation()}
           className={`absolute z-30 w-[340px] max-w-[calc(100vw-24px)] rounded-lg p-4 text-left shadow-dialog ring-1 ${
-            placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
-          } ${align === 'left' ? 'left-0' : 'right-0'} ${dark ? 'bg-[#0a2a5c] text-canvas ring-white/10' : 'bg-canvas text-ink ring-stone'}`}
+            placement === 'left' ? 'bottom-0 right-full mr-3' : placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'
+          } ${placement === 'left' ? '' : align === 'left' ? 'left-0' : 'right-0'} ${dark ? 'bg-[#0a2a5c] text-canvas ring-white/10' : 'bg-canvas text-ink ring-stone'}`}
         >
           <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${dark ? 'text-canvas/60' : 'text-ink/55'}`}>Animation</p>
           <div role="group" aria-label="Animation" className="mt-2 grid grid-cols-3 gap-1.5">
