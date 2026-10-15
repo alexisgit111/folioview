@@ -42,13 +42,92 @@ test.describe('presentation mode', () => {
     await expect(page.getByRole('button', { name: 'Next slide' })).toBeDisabled()
   })
 
-  test('clicking the right of the stage advances, the left goes back', async ({ page }) => {
+  test('a mouse click anywhere on the slide advances', async ({ page }) => {
     await startPresenting(page)
     const vw = page.viewportSize()!.width
     await page.getByTestId('present-stage').click({ position: { x: vw * 0.8, y: 300 } })
     await expect(indicator(page)).toHaveText('2 / 7')
     await page.getByTestId('present-stage').click({ position: { x: vw * 0.1, y: 300 } })
+    await expect(indicator(page)).toHaveText('3 / 7')
+    // right-click does nothing
+    await page.getByTestId('present-stage').click({ button: 'right', position: { x: vw * 0.5, y: 300 } })
+    await expect(indicator(page)).toHaveText('3 / 7')
+  })
+
+  test('Space / Enter go forward; Shift+Space / Backspace / arrows go back', async ({ page }) => {
+    await startPresenting(page)
+    await page.keyboard.press('Space')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    await page.keyboard.press('Enter')
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await page.keyboard.press('ArrowDown')
+    await expect(indicator(page)).toHaveText('4 / 7')
+    await page.keyboard.press('Shift+Space')
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await page.keyboard.press('Backspace')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    await page.keyboard.press('ArrowUp')
     await expect(indicator(page)).toHaveText('1 / 7')
+  })
+
+  test('typing a number and Enter jumps to that slide', async ({ page }) => {
+    await startPresenting(page)
+    await page.keyboard.press('5')
+    await expect(page.getByTestId('present-jump')).toContainText('5')
+    await page.keyboard.press('Enter')
+    await expect(indicator(page)).toHaveText('5 / 7')
+    await expect(page.getByTestId('present-jump')).toHaveCount(0)
+    // backspace edits the number instead of going back
+    await page.keyboard.press('2')
+    await page.keyboard.press('7')
+    await page.keyboard.press('Backspace')
+    await expect(page.getByTestId('present-jump')).toContainText('2')
+    await page.keyboard.press('Enter')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    // out of range shows a message and stays put
+    await page.keyboard.press('9')
+    await page.keyboard.press('9')
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('present-jump')).toContainText('No slide 99')
+    await expect(indicator(page)).toHaveText('2 / 7')
+    await expect(page.getByTestId('present-jump')).toHaveCount(0, { timeout: 3000 })
+    // after it clears, Enter turns the page again
+    await page.keyboard.press('Enter')
+    await expect(indicator(page)).toHaveText('3 / 7')
+  })
+
+  test('keys turn pages without bringing the toolbar back', async ({ page }) => {
+    await startPresenting(page)
+    await page.mouse.move(400, 400)
+    await expect(page.locator('.present-root')).toHaveAttribute('data-controls', 'hidden', { timeout: 6000 })
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Space')
+    await expect(indicator(page)).toHaveText('3 / 7')
+    await page.waitForTimeout(300)
+    await expect(page.locator('.present-root')).toHaveAttribute('data-controls', 'hidden')
+  })
+
+  test('transition settings panel: keeps controls up, and closing it does not turn the page', async ({ page }) => {
+    await startPresenting(page)
+    await page.mouse.move(400, 400)
+    await page.getByTestId('transition-settings').click()
+    await page.getByTestId('transition-panel').getByRole('button', { name: 'Cube', exact: true }).click()
+    await page.waitForTimeout(3200)
+    await expect(page.locator('.present-root')).toHaveAttribute('data-controls', 'visible')
+    await page.getByTestId('present-stage').click({ position: { x: 300, y: 400 } })
+    await expect(page.getByTestId('transition-panel')).toHaveCount(0)
+    await expect(indicator(page)).toHaveText('1 / 7')
+    await page.getByTestId('present-stage').click({ position: { x: 300, y: 400 } })
+    await expect(indicator(page)).toHaveText('2 / 7')
+  })
+
+  test('? shows the shortcut list', async ({ page }) => {
+    await startPresenting(page)
+    await page.keyboard.press('Shift+Slash')
+    await expect(page.getByTestId('present-help')).toBeVisible()
+    await expect(page.getByTestId('present-help')).toContainText('Type a number, then Enter to jump')
+    await page.keyboard.press('Shift+Slash')
+    await expect(page.getByTestId('present-help')).toHaveCount(0)
   })
 
   test('controls fade when idle and return on movement', async ({ page }) => {

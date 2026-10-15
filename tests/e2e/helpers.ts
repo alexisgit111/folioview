@@ -63,3 +63,18 @@ export async function noHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(0)
 }
+
+/** Opens the transition settings panel, applies the choices, and closes it again. */
+export async function setTransition(
+  page: import('@playwright/test').Page,
+  opts: { style?: string; direction?: string; speed?: string },
+) {
+  const trigger = page.getByTestId('transition-settings')
+  await trigger.click()
+  const panel = page.getByTestId('transition-panel')
+  if (opts.style) await panel.getByRole('group', { name: 'Animation' }).getByRole('button', { name: opts.style, exact: true }).click()
+  if (opts.direction) await panel.getByRole('radio', { name: opts.direction }).click()
+  if (opts.speed) await panel.getByRole('radio', { name: opts.speed, exact: true }).click()
+  await trigger.click()
+  await page.getByTestId('transition-panel').waitFor({ state: 'detached' })
+}

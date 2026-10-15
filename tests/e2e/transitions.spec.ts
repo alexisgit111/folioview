@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { announcer, openDemo, trackErrors } from './helpers'
+import { announcer, openDemo, setTransition, trackErrors } from './helpers'
 
 const overlay = (page: Page) => page.locator('.page-transition-overlay')
 
@@ -33,27 +33,74 @@ test.describe('page transitions', () => {
     await expect(overlay(page)).toHaveCount(0, { timeout: 5000 })
   })
 
-  test('transition style is picked from a menu and remembered', async ({ page }) => {
+  test('transition settings: style, direction and speed are chosen in a panel and remembered', async ({ page }) => {
     await openSingle(page)
-    const picker = page.getByTestId('transition-toggle')
-    await expect(picker).toHaveValue('turn')
-    const options = await picker.locator('option').allTextContents()
-    expect(options).toEqual(['Page turn', 'Slide', 'Zoom', 'Cube', 'Flip', 'Wipe', 'Cover / Stack', 'Reveal', 'Drop', 'Fade', 'No animation'])
-    await picker.selectOption('none')
-    await page.keyboard.press('ArrowRight')
-    await expect(page.locator('.single-stage .pdf-page')).toHaveAttribute('data-rendered-page', '1')
-    await expect(overlay(page)).toHaveCount(0)
+    const trigger = page.getByTestId('transition-settings')
+    await expect(trigger).toHaveAttribute('aria-label', /Page turn/)
+    await trigger.click()
+    const panel = page.getByTestId('transition-panel')
+    const names = await panel.getByRole('group', { name: 'Animation' }).getByRole('button').allTextContents()
+    expect(names).toEqual(['Page turn', 'Slide', 'Zoom', 'Cube', 'Flip', 'Wipe', 'Cover / Stack', 'Reveal', 'Drop', 'Fade', 'No animation'])
+    // Fade has no direction
+    await panel.getByRole('button', { name: 'Fade', exact: true }).click()
+    await expect(panel).toContainText('Fade looks the same in every direction')
+    await panel.getByRole('button', { name: 'Slide', exact: true }).click()
+    await panel.getByRole('radio', { name: 'From bottom' }).click()
+    await panel.getByRole('radio', { name: 'Fast', exact: true }).click()
+    // Escape closes the panel, not the page
+    await page.keyboard.press('Escape')
+    await expect(panel).toHaveCount(0)
+    await expect(page).toHaveURL(/\/viewer/)
+
     await page.reload()
     await page.goto('/')
     await openSingle(page)
-    await expect(page.getByTestId('transition-toggle')).toHaveValue('none')
+    await expect(page.getByTestId('transition-settings')).toHaveAttribute('aria-label', /Slide/)
+    await page.getByTestId('transition-settings').click()
+    await expect(page.getByRole('radio', { name: 'From bottom' })).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('radio', { name: 'Fast', exact: true })).toHaveAttribute('aria-checked', 'true')
   })
 
+  test('direction and speed change the animation', async ({ page }) => {
+    await openSingle(page)
+    const sample = async () => {
+      await page.keyboard.press('ArrowRight')
+      await expect(overlay(page)).toHaveCount(1)
+      const info = await page.evaluate(
+        () =>
+          new Promise<{ transform: string; duration: number }>((resolve) => {
+            const tick = () => {
+              const o = document.querySelector('.page-transition-overlay')
+              const a = o?.getAnimations()[0]
+              if (!a) return requestAnimationFrame(tick)
+              const kf = (a.effect as KeyframeEffect).getKeyframes()
+              resolve({ transform: String(kf[kf.length - 1].transform), duration: Number(a.effect!.getTiming().duration) })
+            }
+            tick()
+          }),
+      )
+      await expect(overlay(page)).toHaveCount(0, { timeout: 5000 })
+      return info
+    }
+    await setTransition(page, { style: 'Slide', direction: 'From right', speed: 'Normal' })
+    const normal = await sample()
+    expect(normal.transform).toMatch(/translateX\(-/) // old page leaves to the left
+    await setTransition(page, { direction: 'From bottom', speed: 'Fast' })
+    const fast = await sample()
+    expect(fast.transform).toMatch(/translateY\(-/) // old page leaves upwards
+    expect(fast.duration).toBeLessThan(normal.duration)
+    await setTransition(page, { direction: 'From left', speed: 'Slow' })
+    const slow = await sample()
+    expect(slow.transform).toMatch(/translateX\(\d/) // old page leaves to the right
+    expect(slow.duration).toBeGreaterThan(normal.duration)
+  })
+
+  const LABEL: Record<string, string> = { slide: 'Slide', zoom: 'Zoom', cube: 'Cube', flip: 'Flip', wipe: 'Wipe', cover: 'Cover / Stack', reveal: 'Reveal', drop: 'Drop', fade: 'Fade', turn: 'Page turn' }
   for (const style of ['slide', 'zoom', 'cube', 'flip', 'wipe', 'cover', 'reveal']) {
     test(`${style}: animates both ways, cleans up and leaves the page untouched`, async ({ page }) => {
       const errors = trackErrors(page)
       await openSingle(page)
-      await page.getByTestId('transition-toggle').selectOption(style)
+      await setTransition(page, { style: LABEL[style] })
       const target = page.locator('.single-stage [data-transition-target]')
       for (const [key, expected] of [['ArrowRight', '1'], ['ArrowLeft', '0']] as const) {
         await page.keyboard.press(key)
@@ -75,16 +122,16 @@ test.describe('page transitions', () => {
   }
 
   test('presentation: every style runs without errors', async ({ page }) => {
+    test.setTimeout(120_000)
     const errors = trackErrors(page)
     await openDemo(page, 'deck')
     await page.getByRole('button', { name: 'Present fullscreen' }).click()
     await expect(page.locator('[aria-label="Slide 1 of 7"]')).toHaveAttribute('data-status', 'rendered')
     await page.mouse.move(400, 400)
-    const picker = page.getByTestId('transition-toggle')
     let n = 1
     for (const style of ['slide', 'zoom', 'cube', 'flip', 'wipe', 'cover', 'reveal', 'drop', 'fade', 'turn']) {
       await page.mouse.move(400, 300 + (n % 2))
-      await picker.selectOption(style)
+      await setTransition(page, { style: LABEL[style], direction: n % 2 ? 'From bottom' : 'From right' })
       await page.keyboard.press('ArrowRight')
       n = n === 7 ? 7 : n + 1
       await expect(overlay(page)).toHaveCount(0, { timeout: 5000 })
@@ -118,7 +165,7 @@ test.describe('page transitions', () => {
     await expect(overlay(page)).toHaveCount(1)
     await expect(overlay(page)).toHaveCount(0, { timeout: 5000 })
     await page.mouse.move(400, 400)
-    await expect(page.getByTestId('transition-toggle')).toBeVisible()
+    await expect(page.getByTestId('transition-settings')).toBeVisible()
     expect(errors).toEqual([])
   })
 })

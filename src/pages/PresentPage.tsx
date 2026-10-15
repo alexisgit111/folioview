@@ -7,14 +7,26 @@ import { IconButton } from '../components/ui/Button'
 import { containSize } from '../lib/pdf/geometry'
 import { isTypingTarget, useElementSize, useIdle, useReducedMotion, useSwipe } from '../lib/hooks'
 import { enterFullscreen, exitFullscreen, fullscreenSupported, isFullscreen } from '../lib/features'
-import { usePageTransition, useTransitionStyle } from '../lib/pageTransition'
-import { TransitionPicker } from '../components/viewer/TransitionPicker'
+import { usePageTransition, useTransitionSettings } from '../lib/pageTransition'
+import { TransitionSettings } from '../components/viewer/TransitionSettings'
 import { AnnotationLayer } from '../components/annotations/AnnotationLayer'
 import { AnnotationToolbar, PenToggle } from '../components/annotations/AnnotationToolbar'
 import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
 import { useAnnotations } from '../state/AnnotationContext'
 
 const IDLE_MS = 2500
+const JUMP_TIMEOUT_MS = 4000
+
+/** Only real mouse movement, wheel or a touch reveals the controls — not keys or clicks. */
+const ACTIVITY = {
+  events: ['pointermove', 'pointerdown', 'wheel'],
+  filter: (e: Event) => {
+    const p = e as PointerEvent
+    if (e.type === 'pointerdown') return p.pointerType !== 'mouse'
+    if (e.type === 'pointermove') return p.pointerType === 'mouse' && (Math.abs(p.movementX) + Math.abs(p.movementY) > 0 || p.movementX === undefined)
+    return true
+  },
+} as const
 const STAGE_MARGIN = 24
 
 export function PresentPage() {
@@ -24,10 +36,24 @@ export function PresentPage() {
   const [stageRef, stage] = useElementSize<HTMLDivElement>()
   const [fullscreen, setFullscreen] = useState(isFullscreen)
   const [controlsFocused, setControlsFocused] = useState(false)
-  const [idle, poke] = useIdle(IDLE_MS)
+  const [idle, poke] = useIdle(IDLE_MS, true, ACTIVITY)
   const canFullscreen = fullscreenSupported()
   const wasFullscreen = useRef(isFullscreen())
-  const [transition, setTransition] = useTransitionStyle()
+  const [transition, setTransition] = useTransitionSettings()
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const dismissEvent = useRef<Event | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
+  // Typed slide number (e.g. "1", "12") waiting for Enter.
+  const [jump, setJumpState] = useState<{ text: string; error?: boolean }>({ text: '' })
+  const jumpRef = useRef('')
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const setJump = (text: string, error = false) => {
+    jumpRef.current = error ? '' : text
+    setJumpState({ text, error })
+    clearTimeout(jumpTimer.current)
+    if (text) jumpTimer.current = setTimeout(() => setJump(''), error ? 1400 : JUMP_TIMEOUT_MS)
+  }
+  useEffect(() => () => clearTimeout(jumpTimer.current), [])
   const slideWrapRef = useRef<HTMLDivElement>(null)
   const onSlideRendered = usePageTransition(slideWrapRef, page, transition, reducedMotion)
   const { active: drawing } = useAnnotations()
@@ -67,15 +93,58 @@ export function PresentPage() {
     if (!doc) return
     const onKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target) || e.altKey || e.metaKey || e.ctrlKey) return
+      // Enter / Space on a focused button should press that button, not turn the page.
+      const onControl = (e.target as HTMLElement | null)?.closest?.('button, a, [role="dialog"]')
+
+      // Number + Enter jumps to that slide.
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault()
+        const text = (jumpRef.current + e.key).replace(/^0+/, '').slice(0, 4)
+        setJump(text)
+        return
+      }
+      if (jumpRef.current) {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          const n = parseInt(jumpRef.current, 10)
+          if (n >= 1 && n <= doc.pageCount) {
+            setPage(n - 1)
+            setJump('')
+          } else {
+            setJump(jumpRef.current, true)
+          }
+          return
+        }
+        if (e.key === 'Backspace') {
+          e.preventDefault()
+          setJump(jumpRef.current.slice(0, -1))
+          return
+        }
+        if (e.key === 'Escape' && !isFullscreen()) {
+          e.preventDefault()
+          setJump('')
+          return
+        }
+      }
+
       switch (e.key) {
         case 'ArrowRight':
+        case 'ArrowDown':
         case 'PageDown':
-        case ' ':
           e.preventDefault()
           next()
           break
+        case 'Enter':
+        case ' ':
+          if (onControl) return
+          e.preventDefault()
+          if (e.key === ' ' && e.shiftKey) prev()
+          else next()
+          break
         case 'ArrowLeft':
+        case 'ArrowUp':
         case 'PageUp':
+        case 'Backspace':
           e.preventDefault()
           prev()
           break
@@ -89,7 +158,10 @@ export function PresentPage() {
           break
         case 'Escape':
           // In fullscreen the browser handles ESC and we react to fullscreenchange.
-          if (!isFullscreen()) {
+          if (showHelpRef.current) {
+            e.preventDefault()
+            setShowHelp(false)
+          } else if (!isFullscreen()) {
             e.preventDefault()
             exit()
           }
@@ -99,12 +171,20 @@ export function PresentPage() {
           e.preventDefault()
           void toggleFullscreen()
           break
+        case '?':
+        case 'h':
+        case 'H':
+          e.preventDefault()
+          setShowHelp((v) => !v)
+          break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc, next, prev, setPage, exit])
+  const showHelpRef = useRef(false)
+  showHelpRef.current = showHelp
 
   const toggleFullscreen = async () => {
     if (isFullscreen()) {
@@ -116,7 +196,7 @@ export function PresentPage() {
     }
   }
 
-  const swipe = useSwipe((dir) => (dir === 'next' ? next() : prev()), { enabled: !drawing })
+  const swipe = useSwipe((dir) => (dir === 'next' ? next() : prev()), { enabled: !drawing, vertical: true })
   const downAt = useRef<{ x: number; y: number } | null>(null)
 
   if (!doc) {
@@ -138,7 +218,7 @@ export function PresentPage() {
     width: Math.max(0, stage.width - STAGE_MARGIN * 2),
     height: Math.max(0, stage.height - STAGE_MARGIN * 2),
   })
-  const hidden = idle && !controlsFocused && !drawing
+  const hidden = idle && !controlsFocused && !drawing && !settingsOpen && !showHelp
   const fade = reducedMotion ? '' : 'transition-opacity duration-500'
 
   return (
@@ -152,20 +232,22 @@ export function PresentPage() {
       <div
         ref={stageRef}
         className="absolute inset-0 isolate grid place-items-center overflow-hidden"
-        style={{ touchAction: 'pan-y pinch-zoom' }}
+        style={{ touchAction: 'pinch-zoom' }}
         onPointerDown={(e) => {
-          downAt.current = { x: e.clientX, y: e.clientY }
+          // A click that only closes an open menu or help shouldn't also turn the page.
+          const dismissing = settingsOpen || dismissEvent.current === e.nativeEvent || showHelp
+          downAt.current = dismissing ? null : { x: e.clientX, y: e.clientY }
+          if (showHelp) setShowHelp(false)
           swipe.onPointerDown(e)
         }}
         onPointerUp={(e) => {
           swipe.onPointerUp(e)
           const d = downAt.current
           downAt.current = null
-          // A tap (not a swipe): left third goes back, elsewhere advances.
-          if (!drawing && d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10 && e.button === 0) {
-            if (e.clientX < window.innerWidth / 3) prev()
-            else next()
-          }
+          if (drawing || !d || e.button !== 0 || Math.hypot(e.clientX - d.x, e.clientY - d.y) >= 10) return
+          // Mouse click: next slide. Touch/pen tap: left third goes back, elsewhere advances.
+          if (e.pointerType !== 'mouse' && e.clientX < window.innerWidth / 3) prev()
+          else next()
         }}
         onPointerCancel={swipe.onPointerCancel}
         data-testid="present-stage"
@@ -203,7 +285,7 @@ export function PresentPage() {
       {/* Controls */}
       <div
         className={`${fade} ${hidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
-        onFocusCapture={() => setControlsFocused(true)}
+        onFocusCapture={(e) => setControlsFocused((e.target as HTMLElement).matches(':focus-visible'))}
         onBlurCapture={() => setControlsFocused(false)}
         onPointerMove={poke}
         data-testid="present-controls"
@@ -212,7 +294,18 @@ export function PresentPage() {
           <p className="max-w-[60%] truncate pt-2 text-sm text-canvas/80">{doc.title}</p>
           <div className="flex items-center gap-1">
             <PenToggle tone="dark" />
-            <TransitionPicker value={transition} onChange={setTransition} tone="dark" />
+            <TransitionSettings
+              settings={transition}
+              onChange={setTransition}
+              tone="dark"
+              placement="down"
+              align="right"
+              onOpenChange={(o, closedBy) => {
+                setSettingsOpen(o)
+                dismissEvent.current = closedBy ?? null
+              }}
+            />
+            <IconButton variant="dark" icon="keyboard" label="Keyboard shortcuts" pressed={showHelp} onClick={() => setShowHelp((v) => !v)} className="max-sm:hidden" />
             {canFullscreen && (
               <IconButton
                 variant="dark"
@@ -241,7 +334,79 @@ export function PresentPage() {
         )}
       </div>
 
+      {jump.text && (
+        <div
+          role="status"
+          data-testid="present-jump"
+          className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg px-6 py-4 text-center text-canvas shadow-dialog backdrop-blur ${
+            jump.error ? 'bg-[#9B3B2E]/90' : 'bg-ink/85 ring-1 ring-white/10'
+          }`}
+        >
+          {jump.error ? (
+            <p className="text-lg font-semibold">
+              No slide {jump.text} — choose 1 to {doc.pageCount}
+            </p>
+          ) : (
+            <>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Go to slide</p>
+              <p className="mt-1 font-display text-5xl tabular-nums">
+                {jump.text}
+                <span className="text-canvas/40"> / {doc.pageCount}</span>
+              </p>
+              <p className="mt-2 text-xs text-canvas/60">Press Enter ↵ to jump · Backspace to edit</p>
+            </>
+          )}
+        </div>
+      )}
+
+      {showHelp && <ShortcutHelp onClose={() => setShowHelp(false)} />}
+
       <p className="sr-only" aria-live="polite">Slide {page + 1} of {doc.pageCount}</p>
+    </div>
+  )
+}
+
+const SHORTCUTS: Array<[string[], string]> = [
+  [['→', '↓', 'Space', 'Enter'], 'Next slide'],
+  [['←', '↑', 'Shift+Space', 'Backspace'], 'Previous slide'],
+  [['1', '2', '…', 'Enter'], 'Type a number, then Enter to jump'],
+  [['Home', 'End'], 'First / last slide'],
+  [['Click'], 'Next slide (tap the left third on touch screens to go back)'],
+  [['Swipe'], 'Next / previous on phone and iPad'],
+  [['P'], 'Draw on the slide'],
+  [['F'], 'Toggle fullscreen'],
+  [['Esc'], 'Leave fullscreen / end presentation'],
+  [['?'], 'Show or hide this list'],
+]
+
+function ShortcutHelp({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-label="Keyboard shortcuts"
+      data-testid="present-help"
+      className="absolute left-1/2 top-1/2 z-20 w-[440px] max-w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-[#0a2a5c]/95 p-5 text-canvas shadow-dialog ring-1 ring-white/10 backdrop-blur"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between">
+        <p className="font-display text-xl">Presenting shortcuts</p>
+        <IconButton variant="dark" size="sm" icon="close" label="Close shortcuts" onClick={onClose} />
+      </div>
+      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        {SHORTCUTS.map(([keys, what]) => (
+          <div key={what} className="contents">
+            <dt className="flex flex-wrap content-start items-start gap-1">
+              {keys.map((k) => (
+                <kbd key={k} className="rounded border border-white/20 bg-white/10 px-1.5 font-sans text-xs font-semibold leading-5">
+                  {k}
+                </kbd>
+              ))}
+            </dt>
+            <dd className="text-canvas/80">{what}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

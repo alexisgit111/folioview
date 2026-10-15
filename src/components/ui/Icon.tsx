@@ -26,6 +26,7 @@ const paths = {
   undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11',
   transition: 'M3.5 6.5h9v12h-9zM15.5 6.5h5M15.5 18.5h5M17 9.5l3 3-3 3M14.5 12.5h5.5',
   'chevron-down': 'M6 9l6 6 6-6',
+  keyboard: 'M3.5 7h17v10h-17zM7 10.5h.5M10 10.5h.5M13 10.5h.5M16.5 10.5h.5M8 14h8',
   trash: 'M4.5 6.5h15M10 3.5h4M6.5 6.5l1 13a1 1 0 001 1h7a1 1 0 001-1l1-13M10 10.5v6M14 10.5v6',
 } as const
 

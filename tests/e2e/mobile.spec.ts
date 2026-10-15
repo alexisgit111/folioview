@@ -104,3 +104,19 @@ test('mobile: draw with a finger and the stroke is kept', async ({ page }) => {
   await expect(page.locator('.single-stage canvas[data-annot-canvas]')).toHaveAttribute('data-strokes', '1')
   expect(await announcer(page)).toBe('Page 1 of 12')
 })
+
+test('mobile: presentation swipes left/right and up/down', async ({ page }) => {
+  await openDemo(page, 'deck')
+  await page.getByRole('button', { name: 'Present fullscreen' }).tap()
+  await expect(page.locator('[aria-label="Slide 1 of 7"]')).toHaveAttribute('data-status', 'rendered')
+  const vp = page.viewportSize()!
+  const cx = vp.width / 2, cy = vp.height / 2
+  await swipe(page, { x: vp.width * 0.85, y: cy }, { x: vp.width * 0.15, y: cy })
+  await expect(page.getByTestId('present-indicator')).toHaveText('2 / 7')
+  await page.waitForTimeout(1500)
+  await swipe(page, { x: cx, y: vp.height * 0.8 }, { x: cx, y: vp.height * 0.3 })
+  await expect(page.getByTestId('present-indicator')).toHaveText('3 / 7')
+  await page.waitForTimeout(1500)
+  await swipe(page, { x: cx, y: vp.height * 0.3 }, { x: cx, y: vp.height * 0.8 })
+  await expect(page.getByTestId('present-indicator')).toHaveText('2 / 7')
+})

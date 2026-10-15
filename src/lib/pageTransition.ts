@@ -30,35 +30,74 @@ export const TRANSITION_LABELS: Record<TransitionStyle, string> = {
 /** Menu order. */
 export const TRANSITION_STYLES = Object.keys(TRANSITION_LABELS) as TransitionStyle[]
 
-const STORAGE_KEY = 'fv.transition'
+/** Where the next page comes in from. Going backwards plays it in reverse. */
+export type TransitionDirection = 'right' | 'left' | 'bottom' | 'top'
+export type TransitionSpeed = 'slow' | 'normal' | 'fast'
+
+export const DIRECTION_LABELS: Record<TransitionDirection, string> = {
+  right: 'From right',
+  left: 'From left',
+  bottom: 'From bottom',
+  top: 'From top',
+}
+export const SPEED_LABELS: Record<TransitionSpeed, string> = { slow: 'Slow', normal: 'Normal', fast: 'Fast' }
+const SPEED_FACTOR: Record<TransitionSpeed, number> = { slow: 1.6, normal: 1, fast: 0.6 }
+
+/** Styles where direction makes a visible difference. */
+export const DIRECTIONAL: ReadonlySet<TransitionStyle> = new Set(['turn', 'slide', 'cube', 'flip', 'wipe', 'cover', 'reveal'])
+
+export interface TransitionSettings {
+  style: TransitionStyle
+  direction: TransitionDirection
+  speed: TransitionSpeed
+}
+
+const KEYS = { style: 'fv.transition', direction: 'fv.transition.direction', speed: 'fv.transition.speed' } as const
+const DEFAULTS: TransitionSettings = { style: 'turn', direction: 'right', speed: 'normal' }
 
 function isStyle(v: unknown): v is TransitionStyle {
   return typeof v === 'string' && v in TRANSITION_LABELS
 }
+const valid = {
+  style: isStyle,
+  direction: (v: unknown): v is TransitionDirection => typeof v === 'string' && v in DIRECTION_LABELS,
+  speed: (v: unknown): v is TransitionSpeed => typeof v === 'string' && v in SPEED_LABELS,
+}
 
-function readStored(): TransitionStyle {
+function read<K extends keyof TransitionSettings>(key: K): TransitionSettings[K] {
   try {
-    const v = localStorage.getItem(STORAGE_KEY)
-    if (isStyle(v)) return v
+    const v = localStorage.getItem(KEYS[key])
+    if (valid[key](v)) return v as TransitionSettings[K]
   } catch {
     /* storage unavailable */
   }
-  return 'turn'
+  return DEFAULTS[key]
 }
 
 /** Remembered per browser; shared by single-page and presentation modes. */
-export function useTransitionStyle(): [TransitionStyle, (next: TransitionStyle) => void] {
-  const [style, setStyle] = useState<TransitionStyle>(readStored)
-  const choose = useCallback((next: TransitionStyle) => {
-    if (!isStyle(next)) return
-    setStyle(next)
-    try {
-      localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      /* ignore */
-    }
+export function useTransitionSettings(): [TransitionSettings, (change: Partial<TransitionSettings>) => void] {
+  const [settings, setSettings] = useState<TransitionSettings>(() => ({
+    style: read('style'),
+    direction: read('direction'),
+    speed: read('speed'),
+  }))
+  const update = useCallback((change: Partial<TransitionSettings>) => {
+    setSettings((cur) => {
+      const next = { ...cur }
+      for (const k of Object.keys(change) as (keyof TransitionSettings)[]) {
+        const v = change[k]
+        if (!valid[k](v)) continue
+        ;(next as Record<string, string>)[k] = v
+        try {
+          localStorage.setItem(KEYS[k], v)
+        } catch {
+          /* ignore */
+        }
+      }
+      return next
+    })
   }, [])
-  return [style, choose]
+  return [settings, update]
 }
 
 interface Pending {
@@ -83,9 +122,10 @@ const DROP_MS = 820
 export function usePageTransition(
   containerRef: RefObject<HTMLElement | null>,
   page: number,
-  style: TransitionStyle,
+  settings: TransitionSettings,
   reducedMotion: boolean,
 ): () => void {
+  const { style, direction: towards, speed } = settings
   const prevPage = useRef(page)
   const pending = useRef<Pending | null>(null)
   const running = useRef<Animation[]>([])
@@ -160,7 +200,9 @@ export function usePageTransition(
     const incoming =
       container?.querySelector<HTMLElement>('[data-transition-target]') ?? container?.querySelector<HTMLElement>('.pdf-page') ?? null
     const stage = clipAncestor(container)
-    const anims = runTransition(style, overlay, incoming, direction, stage)
+    const axis = towards === 'top' || towards === 'bottom' ? 'y' : 'x'
+    const sign = towards === 'left' || towards === 'top' ? -1 : 1
+    const anims = runTransition(style, overlay, incoming, (direction * sign) as 1 | -1, stage, axis, SPEED_FACTOR[speed])
     running.current.push(...anims)
 
     // Keep the stage from growing scrollbars while pages travel outside it.
@@ -173,7 +215,7 @@ export function usePageTransition(
     }
     if (!anims.length) return cleanup()
     Promise.allSettled(anims.map((a) => a.finished)).then(cleanup)
-  }, [containerRef, style])
+  }, [containerRef, style, towards, speed])
 
   useEffect(() => () => {
     finishRunning()
@@ -191,7 +233,7 @@ const EASE_OUT = 'cubic-bezier(0.22, 0.61, 0.36, 1)'
 /**
  * Builds the animations for one page change. `old` is the snapshot of the
  * outgoing page (on top by default); `incoming` is the freshly rendered page.
- * Returns the animations; the first one is the main one.
+ * `dir` +1 means the new page arrives from the right (axis x) or bottom (axis y).
  */
 function runTransition(
   style: TransitionStyle,
@@ -199,16 +241,28 @@ function runTransition(
   incoming: HTMLElement | null,
   dir: 1 | -1,
   stage: HTMLElement | null,
+  axis: 'x' | 'y',
+  speed: number,
 ): Animation[] {
   const out: Animation[] = []
   const anim = (el: Element | null, frames: Keyframe[], opts: KeyframeAnimationOptions) => {
     if (!el) return
-    out.push(el.animate(frames, opts))
+    const o = { ...opts }
+    if (typeof o.duration === 'number') o.duration *= speed
+    if (o.delay) o.delay *= speed
+    out.push(el.animate(frames, o))
   }
-  const w = old.offsetWidth
-  const persp = `perspective(${Math.round(Math.max(2200, w * 2.6))}px)`
+  const v = axis === 'y'
+  const size = v ? old.offsetHeight : old.offsetWidth
+  const persp = `perspective(${Math.round(Math.max(2200, size * 2.6))}px)`
   // Far enough to leave the visible stage entirely.
-  const travel = Math.round(Math.max(stage?.clientWidth ?? window.innerWidth, w) + 24)
+  const stageSize = v ? (stage?.clientHeight ?? window.innerHeight) : (stage?.clientWidth ?? window.innerWidth)
+  const travel = Math.round(Math.max(stageSize, size) + 24)
+  // Axis-aware building blocks. Rotations are mirrored for the vertical axis so
+  // "towards the viewer" stays towards the viewer.
+  const move = (n: number, unit = 'px') => (v ? `translateY(${n}${unit})` : `translateX(${n}${unit})`)
+  const rot = (deg: number) => (v ? `rotateX(${-deg}deg)` : `rotateY(${deg}deg)`)
+  const edge = (side: 1 | -1) => (v ? (side > 0 ? 'center bottom' : 'center top') : side > 0 ? 'right center' : 'left center')
 
   switch (style) {
     case 'fade':
@@ -217,8 +271,8 @@ function runTransition(
 
     case 'slide': {
       const ms = 520
-      anim(old, [{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * travel}px)` }], { duration: ms, easing: EASE_INOUT })
-      anim(incoming, [{ transform: `translateX(${dir * travel}px)` }, { transform: 'translateX(0)' }], { duration: ms, easing: EASE_INOUT })
+      anim(old, [{ transform: move(0) }, { transform: move(-dir * travel) }], { duration: ms, easing: EASE_INOUT })
+      anim(incoming, [{ transform: move(dir * travel) }, { transform: move(0) }], { duration: ms, easing: EASE_INOUT })
       break
     }
 
@@ -226,31 +280,30 @@ function runTransition(
       // Forward: the old page grows past you and fades; the new one rises up
       // from behind. Backward is the reverse.
       const ms = 480
-      const oldTo = dir > 0 ? 1.18 : 0.82
-      const newFrom = dir > 0 ? 0.82 : 1.18
-      anim(old, [{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${oldTo})`, opacity: 0 }], { duration: ms, easing: EASE_OUT })
-      anim(incoming, [{ transform: `scale(${newFrom})`, opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: ms, easing: EASE_OUT })
+      const fwd = dir > 0
+      anim(old, [{ transform: 'scale(1)', opacity: 1 }, { transform: `scale(${fwd ? 1.18 : 0.82})`, opacity: 0 }], { duration: ms, easing: EASE_OUT })
+      anim(incoming, [{ transform: `scale(${fwd ? 0.82 : 1.18})`, opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: ms, easing: EASE_OUT })
       break
     }
 
     case 'cube': {
       // Two faces of a cube sharing an edge, rotating a quarter turn.
       const ms = 720
-      old.style.transformOrigin = dir > 0 ? 'right center' : 'left center'
-      if (incoming) incoming.style.transformOrigin = dir > 0 ? 'left center' : 'right center'
+      old.style.transformOrigin = edge(dir)
+      if (incoming) incoming.style.transformOrigin = edge((-dir) as 1 | -1)
       anim(
         old,
         [
-          { transform: `${persp} translateX(0) rotateY(0deg)`, filter: 'brightness(1)' },
-          { transform: `${persp} translateX(${-dir * 100}%) rotateY(${-dir * 90}deg)`, filter: 'brightness(0.45)' },
+          { transform: `${persp} ${move(0)} ${rot(0)}`, filter: 'brightness(1)' },
+          { transform: `${persp} ${move(-dir * 100, '%')} ${rot(-dir * 90)}`, filter: 'brightness(0.45)' },
         ],
         { duration: ms, easing: EASE_INOUT },
       )
       anim(
         incoming,
         [
-          { transform: `${persp} translateX(${dir * 100}%) rotateY(${dir * 90}deg)`, filter: 'brightness(0.45)' },
-          { transform: `${persp} translateX(0) rotateY(0deg)`, filter: 'brightness(1)' },
+          { transform: `${persp} ${move(dir * 100, '%')} ${rot(dir * 90)}`, filter: 'brightness(0.45)' },
+          { transform: `${persp} ${move(0)} ${rot(0)}`, filter: 'brightness(1)' },
         ],
         { duration: ms, easing: EASE_INOUT },
       )
@@ -267,16 +320,16 @@ function runTransition(
       anim(
         old,
         [
-          { transform: `${persp} rotateY(0deg)`, filter: 'brightness(1)' },
-          { transform: `${persp} rotateY(${-dir * 90}deg)`, filter: 'brightness(0.6)' },
+          { transform: `${persp} ${rot(0)}`, filter: 'brightness(1)' },
+          { transform: `${persp} ${rot(-dir * 90)}`, filter: 'brightness(0.6)' },
         ],
         { duration: half, easing: 'cubic-bezier(0.5, 0, 0.9, 0.5)', fill: 'forwards' },
       )
       anim(
         incoming,
         [
-          { transform: `${persp} rotateY(${dir * 90}deg)`, filter: 'brightness(0.6)' },
-          { transform: `${persp} rotateY(0deg)`, filter: 'brightness(1)' },
+          { transform: `${persp} ${rot(dir * 90)}`, filter: 'brightness(0.6)' },
+          { transform: `${persp} ${rot(0)}`, filter: 'brightness(1)' },
         ],
         { duration: half, delay: half, easing: 'cubic-bezier(0.1, 0.5, 0.5, 1)', fill: 'backwards' },
       )
@@ -284,9 +337,15 @@ function runTransition(
     }
 
     case 'wipe': {
-      // A straight edge sweeps across in the reading direction, uncovering the new page.
+      // A straight edge sweeps across, uncovering the new page from the side it comes from.
       const ms = 560
-      const end = dir > 0 ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)'
+      const end = v
+        ? dir > 0
+          ? 'inset(0 0 100% 0)'
+          : 'inset(100% 0 0 0)'
+        : dir > 0
+          ? 'inset(0 100% 0 0)'
+          : 'inset(0 0 0 100%)'
       anim(old, [{ clipPath: 'inset(0 0 0 0)' }, { clipPath: end }], { duration: ms, easing: EASE_INOUT })
       break
     }
@@ -298,9 +357,9 @@ function runTransition(
       anim(
         incoming,
         [
-          { transform: `translateX(${dir * travel}px)`, boxShadow: '0 0 0 rgba(0,0,0,0)' },
-          { transform: 'translateX(0)', boxShadow: '0 20px 60px rgba(0,20,58,0.35)', offset: 0.85 },
-          { transform: 'translateX(0)', boxShadow: '0 0 0 rgba(0,0,0,0)' },
+          { transform: move(dir * travel), boxShadow: '0 0 0 rgba(0,0,0,0)' },
+          { transform: move(0), boxShadow: '0 20px 60px rgba(0,20,58,0.35)', offset: 0.85 },
+          { transform: move(0), boxShadow: '0 0 0 rgba(0,0,0,0)' },
         ],
         { duration: ms, easing: EASE_OUT },
       )
@@ -316,7 +375,7 @@ function runTransition(
       // The old page slides away, revealing the new page waiting underneath.
       const ms = 560
       old.style.boxShadow = '0 20px 60px rgba(0,20,58,0.35)'
-      anim(old, [{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * travel}px)` }], { duration: ms, easing: EASE_INOUT })
+      anim(old, [{ transform: move(0) }, { transform: move(-dir * travel) }], { duration: ms, easing: EASE_INOUT })
       anim(incoming, [{ transform: 'scale(0.94)', filter: 'brightness(0.6)' }, { transform: 'scale(1)', filter: 'brightness(1)' }], {
         duration: ms,
         easing: EASE_OUT,
@@ -325,8 +384,8 @@ function runTransition(
     }
 
     case 'drop': {
-      // The sheet slides a little in the reading direction, tips, then falls
-      // away under "gravity" (accelerating ease-in) and fades as it leaves.
+      // The sheet slides a little sideways, tips, then falls away under
+      // "gravity" (accelerating ease-in) and fades as it leaves.
       const fall = Math.round((stage?.clientHeight ?? window.innerHeight) * 1.1)
       const side = dir > 0 ? -1 : 1
       old.style.transformOrigin = dir > 0 ? 'left bottom' : 'right bottom'
@@ -351,17 +410,17 @@ function runTransition(
 
     case 'turn':
     default: {
-      // Page turn: the old sheet hinges on its spine edge and swings toward the
-      // viewer, darkening as it turns, while the new page brightens beneath it.
-      old.style.transformOrigin = dir > 0 ? 'left center' : 'right center'
+      // Page turn: the old sheet hinges on the edge opposite where the new page
+      // comes from and swings toward the viewer, darkening as it turns.
+      old.style.transformOrigin = edge((-dir) as 1 | -1)
       old.style.boxShadow = '0 0 40px rgba(0,0,0,0.25)'
       const angle = dir > 0 ? -95 : 95
       anim(
         old,
         [
-          { transform: `${persp} rotateY(0deg)`, filter: 'brightness(1)', opacity: 1 },
-          { transform: `${persp} rotateY(${angle * 0.55}deg)`, filter: 'brightness(0.85)', opacity: 1, offset: 0.55 },
-          { transform: `${persp} rotateY(${angle}deg)`, filter: 'brightness(0.55)', opacity: 0 },
+          { transform: `${persp} ${rot(0)}`, filter: 'brightness(1)', opacity: 1 },
+          { transform: `${persp} ${rot(angle * 0.55)}`, filter: 'brightness(0.85)', opacity: 1, offset: 0.55 },
+          { transform: `${persp} ${rot(angle)}`, filter: 'brightness(0.55)', opacity: 0 },
         ],
         { duration: TURN_MS, easing: 'cubic-bezier(0.45, 0.05, 0.35, 1)' },
       )

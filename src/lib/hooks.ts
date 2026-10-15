@@ -60,11 +60,18 @@ export function useDebounced<T>(value: T, delay: number): T {
   return v
 }
 
+const DEFAULT_ACTIVITY = ['pointermove', 'pointerdown', 'keydown', 'touchstart', 'wheel'] as const
+
 /**
  * True after `timeout` ms with no pointer, touch or key activity.
  * `poke` lets callers register activity explicitly.
  */
-export function useIdle(timeout: number, enabled = true): [boolean, () => void] {
+export function useIdle(
+  timeout: number,
+  enabled = true,
+  /** Which window events count as activity. Return false from the filter to ignore one. */
+  activity: { events?: readonly string[]; filter?: (e: Event) => boolean } = {},
+): [boolean, () => void] {
   const [idle, setIdle] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const poke = useCallback(() => {
@@ -72,15 +79,21 @@ export function useIdle(timeout: number, enabled = true): [boolean, () => void] 
     clearTimeout(timer.current)
     if (enabled) timer.current = setTimeout(() => setIdle(true), timeout)
   }, [timeout, enabled])
+  const events = (activity.events ?? DEFAULT_ACTIVITY).join(' ')
+  const filterRef = useRef(activity.filter)
+  filterRef.current = activity.filter
   useEffect(() => {
     poke()
-    const events = ['pointermove', 'pointerdown', 'keydown', 'touchstart', 'wheel'] as const
-    events.forEach((e) => window.addEventListener(e, poke, { passive: true }))
+    const list = events.split(' ')
+    const on = (e: Event) => {
+      if (!filterRef.current || filterRef.current(e)) poke()
+    }
+    list.forEach((e) => window.addEventListener(e, on, { passive: true }))
     return () => {
       clearTimeout(timer.current)
-      events.forEach((e) => window.removeEventListener(e, poke))
+      list.forEach((e) => window.removeEventListener(e, on))
     }
-  }, [poke])
+  }, [poke, events])
   return [idle, poke]
 }
 
@@ -96,7 +109,11 @@ export interface SwipeHandlers {
  */
 export function useSwipe(
   onSwipe: (direction: 'next' | 'prev') => void,
-  { threshold = 50, enabled = true }: { threshold?: number; enabled?: boolean } = {},
+  {
+    threshold = 50,
+    enabled = true,
+    vertical = false,
+  }: { threshold?: number; enabled?: boolean; /** Also accept up/down swipes (up = next). */ vertical?: boolean } = {},
 ): SwipeHandlers {
   const start = useRef<{ x: number; y: number; id: number; t: number } | null>(null)
   return {
@@ -110,9 +127,9 @@ export function useSwipe(
       if (!enabled || !s || s.id !== e.pointerId) return
       const dx = e.clientX - s.x
       const dy = e.clientY - s.y
-      if (Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy) * 1.5) return
       if (performance.now() - s.t > 1200) return
-      onSwipe(dx < 0 ? 'next' : 'prev')
+      if (Math.abs(dx) >= threshold && Math.abs(dx) >= Math.abs(dy) * 1.5) return onSwipe(dx < 0 ? 'next' : 'prev')
+      if (vertical && Math.abs(dy) >= threshold && Math.abs(dy) >= Math.abs(dx) * 1.5) onSwipe(dy < 0 ? 'next' : 'prev')
     },
     onPointerCancel: () => {
       start.current = null

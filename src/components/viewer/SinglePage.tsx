@@ -3,7 +3,7 @@ import type { OpenDocument } from '../../state/DocumentContext'
 import { useElementSize, useSwipe } from '../../lib/hooks'
 import { fitScale, type ZoomMode } from '../../lib/pdf/geometry'
 import { PdfPage } from './PdfPage'
-import { usePageTransition, type TransitionStyle } from '../../lib/pageTransition'
+import { usePageTransition, type TransitionSettings } from '../../lib/pageTransition'
 import { AnnotationLayer } from '../annotations/AnnotationLayer'
 import { AnnotationToolbar } from '../annotations/AnnotationToolbar'
 import { useAnnotations } from '../../state/AnnotationContext'
@@ -23,7 +23,7 @@ interface SinglePageProps {
   onEffectiveZoom: (zoom: number) => void
   showThumbnails: boolean
   getPageSize: (index: number) => { width: number; height: number }
-  transition: TransitionStyle
+  transition: TransitionSettings
   reducedMotion: boolean
 }
 

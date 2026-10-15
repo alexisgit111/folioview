@@ -12,8 +12,8 @@ import { clampZoom, nextZoom, type ZoomMode } from '../lib/pdf/geometry'
 import { describeSpread, spreadForPage } from '../lib/pdf/spreads'
 import { enterFullscreen } from '../lib/features'
 import { EmptyState } from '../components/EmptyState'
-import { useTransitionStyle } from '../lib/pageTransition'
-import { TransitionPicker } from '../components/viewer/TransitionPicker'
+import { useTransitionSettings } from '../lib/pageTransition'
+import { TransitionSettings } from '../components/viewer/TransitionSettings'
 import { PenToggle } from '../components/annotations/AnnotationToolbar'
 import { useAnnotationShortcuts } from '../components/annotations/useAnnotationShortcuts'
 import { useAnnotations } from '../state/AnnotationContext'
@@ -51,7 +51,7 @@ export function ViewerPage() {
   const [showThumbs, setShowThumbs] = useState(true)
   const [flipPortrait, setFlipPortrait] = useState(false)
   const navRef = useRef<NavigationHandle>(null)
-  const [transition, setTransition] = useTransitionStyle()
+  const [transition, setTransition] = useTransitionSettings()
   useAnnotationShortcuts(Boolean(doc))
 
   const pageCount = doc?.pageCount ?? 0
@@ -230,7 +230,7 @@ export function ViewerPage() {
             />
           )}
           {mode === 'single' && (
-            <TransitionPicker value={transition} onChange={setTransition} tone="light" compact />
+            <TransitionSettings settings={transition} onChange={setTransition} tone="light" compact placement="up" align="left" />
           )}
         </div>
 
