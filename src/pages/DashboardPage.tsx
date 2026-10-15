@@ -35,12 +35,14 @@ export function DashboardPage() {
 
         <section className="mx-auto grid max-w-6xl gap-10 px-5 pb-14 pt-10 sm:px-8 md:grid-cols-[1.05fr_1fr] md:items-center md:gap-14 md:pb-20 md:pt-16">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Brochures · Portfolios · Presentations</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent sm:text-xs sm:tracking-[0.2em]">Harcourts Golden Links · Internal Platform</p>
             <h1 className="mt-4 font-display text-[clamp(2.3rem,4.6vw,3.5rem)] leading-[1.05] tracking-[-0.015em]">
-              Turn any PDF into a<br className="hidden sm:block" /> <span className="text-accent">page-turning</span> folio.
+              Bring every PDF <br className="hidden sm:block" />
+              <span className="whitespace-nowrap text-accent">to life.</span>
             </h1>
             <p className="mt-5 max-w-md text-[17px] leading-relaxed text-canvas/75">
-              Flip through brochures like print, read page by page with zoom, or present fullscreen in a meeting — straight from your browser.
+              Turn property brochures, portfolios, and presentations into interactive, page-turning experiences. Designed exclusively for the
+              Harcourts Golden Links team.
             </p>
           </div>
 
