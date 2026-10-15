@@ -20,8 +20,7 @@ export async function uploadFixture(page: Page, name: string) {
 }
 
 export async function openDemo(page: Page, id: 'harbourview' | 'portfolio' | 'deck') {
-  await page.goto('/')
-  await page.getByTestId(`demo-${id}`).click()
+  await page.goto(`/?demo=${id}`)
   await expect(page).toHaveURL(/\/viewer/)
 }
 

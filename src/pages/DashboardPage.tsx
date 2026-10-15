@@ -1,13 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import type { PDFDocumentProxy } from 'pdfjs-dist'
+import { useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useDocument } from '../state/DocumentContext'
 import { useFilePicker } from '../components/FilePicker'
 import { Button } from '../components/ui/Button'
 import { Icon } from '../components/ui/Icon'
-import { PdfPage } from '../components/viewer/PdfPage'
-import { DEMO_DOCUMENTS, type DemoDocument } from '../lib/demos'
-import { loadPdf } from '../lib/pdf/pdfjs'
+import { DEMO_DOCUMENTS } from '../lib/demos'
 import { config } from '../lib/config'
 
 export function DashboardPage() {
@@ -15,12 +12,22 @@ export function DashboardPage() {
   const openPicker = useFilePicker()
   const busy = load.status === 'loading'
 
+  // The bundled samples are no longer listed, but `/?demo=<id>` still opens one.
+  const [params, setParams] = useSearchParams()
+  const demoId = params.get('demo')
+  useEffect(() => {
+    const demo = DEMO_DOCUMENTS.find((d) => d.id === demoId)
+    if (!demo) return
+    setParams({}, { replace: true })
+    void openDemo(demo)
+  }, [demoId, openDemo, setParams])
+
   return (
-    <div className="min-h-dvh bg-canvas text-ink">
-      <div className="bg-ink text-canvas">
+    <div className="flex min-h-dvh flex-col bg-ink text-ink">
+      <div className="flex-1 bg-ink text-canvas">
         <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-8">
           <Wordmark />
-          <p className="inline-flex items-center gap-2 rounded border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-canvas/85" data-testid="local-status">
+          <p className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-canvas/85" data-testid="local-status">
             <Icon name="shield" size={15} className="text-accent" />
             <span>Local-only<span className="hidden sm:inline"> · files never leave this device</span></span>
           </p>
@@ -41,9 +48,11 @@ export function DashboardPage() {
         </section>
       </div>
 
-      <main className="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8">
-        {doc && (
-          <section className="mb-12 flex flex-col gap-4 rounded-md border border-stone border-l-4 border-l-accent bg-mist p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Currently open">
+      {doc && (
+      <main className="bg-canvas">
+        <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
+        {(
+          <section className="flex flex-col gap-4 rounded-md border border-stone border-l-4 border-l-accent bg-mist p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Currently open">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink/50">Open in this tab</p>
               <p className="mt-1 truncate font-display text-xl">{doc.title}</p>
@@ -54,41 +63,17 @@ export function DashboardPage() {
             </Link>
           </section>
         )}
-
-        <section aria-labelledby="demo-heading">
-          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-stone pb-4">
-            <div>
-              <h2 id="demo-heading" className="font-display text-2xl">Demo library</h2>
-              <p className="mt-1 text-sm text-ink/60">Fictional sample documents bundled with the app — try every mode without your own files.</p>
-            </div>
-          </div>
-          <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {DEMO_DOCUMENTS.map((demo) => (
-              <li key={demo.id}>
-                <DemoCard demo={demo} onOpen={() => void openDemo(demo)} disabled={busy} />
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-16 grid gap-6 border-t border-stone pt-8 text-sm text-ink/60 sm:grid-cols-3">
-          <Note title="Private by design">PDFs are read in this browser tab with PDF.js. Nothing is uploaded, stored or tracked.</Note>
-          <Note title="Not saved yet">Closing or reloading the tab clears the open document. A saved library arrives in a later milestone.</Note>
-          <Note title="Keyboard friendly">← → or Page Up/Down to turn pages, F for fullscreen in Present, Esc to exit.</Note>
-        </section>
+        </div>
       </main>
+      )}
     </div>
   )
 }
 
 function Wordmark() {
   return (
-    <Link to="/" className="inline-flex items-center gap-2.5" aria-label="FolioView home">
-      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-        <rect x="3" y="5" width="10.5" height="18" rx="1.5" fill="#FFFFFF" />
-        <path d="M14.5 5h9a1.5 1.5 0 011.5 1.5v15a1.5 1.5 0 01-1.5 1.5h-9z" fill="#00A1E9" />
-      </svg>
-      <span className="font-display text-[22px] tracking-[-0.01em]">Folio<span className="text-accent">View</span></span>
+    <Link to="/" className="inline-flex items-center" aria-label="FolioView home">
+      <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Harcourts Golden Links" className="h-7 w-auto sm:h-9" />
     </Link>
   )
 }
@@ -106,84 +91,6 @@ function DropZone({ onPick, disabled }: { onPick: () => void; disabled: boolean 
         Choose PDF
       </Button>
       <p className="mt-5 text-xs text-ink/50">Up to {config.maxUploadMb} MB · password-protected PDFs supported</p>
-    </div>
-  )
-}
-
-function DemoCard({ demo, onOpen, disabled }: { demo: DemoDocument; onOpen: () => void; disabled: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      disabled={disabled}
-      className="group block w-full rounded-md text-left disabled:opacity-60"
-      aria-label={`Open demo: ${demo.title}`}
-      data-testid={`demo-${demo.id}`}
-    >
-      <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-md bg-mist ring-1 ring-stone transition group-hover:ring-2 group-hover:ring-accent">
-        <DemoThumb url={demo.url} />
-      </div>
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold decoration-accent decoration-2 underline-offset-4 group-hover:underline">{demo.title}</p>
-          <p className="text-sm text-ink/55">{demo.subtitle}</p>
-        </div>
-        <span className="mt-0.5 shrink-0 rounded-sm bg-ink px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-canvas">
-          {demo.kind}
-        </span>
-      </div>
-    </button>
-  )
-}
-
-/** Renders page 1 of a bundled demo as its cover image. */
-function DemoThumb({ url }: { url: string }) {
-  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    let loaded: PDFDocumentProxy | null = null
-    loadPdf(url)
-      .then(async (d) => {
-        loaded = d
-        const p = await d.getPage(1)
-        const vp = p.getViewport({ scale: 1 })
-        if (!alive) return
-        setSize({ width: vp.width, height: vp.height })
-        setPdf(d)
-      })
-      .catch(() => alive && setFailed(true))
-    return () => {
-      alive = false
-      // Give the thumbnail's own cleanup a tick to cancel rendering first.
-      setTimeout(() => void loaded?.loadingTask.destroy(), 0)
-    }
-  }, [url])
-
-  if (failed) return <span className="text-sm text-ink/50">Preview unavailable</span>
-  if (!pdf || !size) return <div className="pdf-page-placeholder h-[70%] w-[50%] rounded-sm" aria-hidden="true" />
-  const box = { width: 260, height: 170 }
-  const s = Math.min(box.width / size.width, box.height / size.height)
-  return (
-    <PdfPage
-      pdf={pdf}
-      pageIndex={0}
-      width={Math.round(size.width * s)}
-      height={Math.round(size.height * s)}
-      label=""
-      lazy
-      className="shadow-page transition-transform duration-300 group-hover:-translate-y-0.5"
-    />
-  )
-}
-
-function Note({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="border-l-2 border-accent pl-2.5 font-bold text-ink">{title}</p>
-      <p className="mt-1 leading-relaxed">{children}</p>
     </div>
   )
 }

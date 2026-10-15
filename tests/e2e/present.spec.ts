@@ -128,10 +128,19 @@ test.describe('presentation mode', () => {
     await expect(indicator(page)).toHaveText('2 / 7')
     // a trackpad swipe: a burst of small, decaying events = one slide
     await page.waitForTimeout(400)
-    for (const d of [8, 20, 30, 26, 18, 12, 8, 5, 3, 2, 1]) {
-      await page.mouse.wheel(0, d)
-      await page.waitForTimeout(16)
-    }
+    await page.evaluate(
+      () =>
+        new Promise<void>((done) => {
+          const deltas = [8, 20, 30, 26, 18, 12, 8, 5, 3, 2, 1]
+          let i = 0
+          const fire = () => {
+            if (i >= deltas.length) return done()
+            window.dispatchEvent(new WheelEvent('wheel', { deltaY: deltas[i++], bubbles: true }))
+            setTimeout(fire, 16)
+          }
+          fire()
+        }),
+    )
     await expect(indicator(page)).toHaveText('3 / 7')
     await page.waitForTimeout(400)
     await expect(indicator(page)).toHaveText('3 / 7')

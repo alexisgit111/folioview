@@ -1,19 +1,23 @@
 import { expect, test } from '@playwright/test'
-import { canvasHasInk, noHorizontalOverflow, trackErrors } from './helpers'
+import { noHorizontalOverflow, trackErrors } from './helpers'
 
-test('dashboard shows local-only status and demo cards with real thumbnails', async ({ page }) => {
+test('dashboard shows the logo and local-only status, without the demo library', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/')
   await expect(page.getByTestId('local-status')).toContainText('Local-only')
-  await expect(page.getByRole('heading', { name: 'Demo library' })).toBeVisible()
-  for (const id of ['harbourview', 'portfolio', 'deck']) {
-    const card = page.getByTestId(`demo-${id}`)
-    await expect(card).toBeVisible()
-    await expect(card.locator('.pdf-page[data-status="rendered"]')).toBeVisible()
-  }
-  expect(await canvasHasInk(page, '[data-testid="demo-harbourview"] canvas')).toBe(true)
+  const logo = page.getByRole('link', { name: 'FolioView home' }).locator('img')
+  await expect(logo).toBeVisible()
+  expect(await logo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
+  await expect(page.getByRole('heading', { name: 'Demo library' })).toHaveCount(0)
+  await expect(page.getByText('Private by design')).toHaveCount(0)
   await noHorizontalOverflow(page)
   expect(errors).toEqual([])
+})
+
+test('/?demo=<id> still opens a bundled sample', async ({ page }) => {
+  await page.goto('/?demo=deck')
+  await expect(page).toHaveURL(/\/viewer/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Vendor Meeting Deck')
 })
 
 test('viewer without a document shows an empty state', async ({ page }) => {
